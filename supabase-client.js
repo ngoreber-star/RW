@@ -1137,6 +1137,88 @@
         configure: configureSupabase,
         OfflineAuth,
         CONFIG,
+        // Diagnóstico: ejecutar en consola (F12) para ver estado completo
+        async diagnose() {
+            const out = { config: {}, supabase: {}, dataStore: {}, auth: {}, tenant: {}, localStorage: {} };
+            out.config.url = SUPABASE_CONFIG.URL;
+            out.config.urlConfigured = SUPABASE_CONFIG.URL && SUPABASE_CONFIG.URL !== 'https://YOUR_PROJECT.supabase.co';
+            out.config.anonKeySet = !!SUPABASE_CONFIG.ANON_KEY && SUPABASE_CONFIG.ANON_KEY !== 'YOUR_ANON_KEY';
+            out.supabase.clientCreated = !!supabase;
+            if (supabase) {
+                try {
+                    const { data, error } = await supabase.from('tenants').select('id').limit(1);
+                    out.supabase.canReachAPI = !error;
+                    out.supabase.error = error?.message || null;
+                } catch (e) {
+                    out.supabase.canReachAPI = false;
+                    out.supabase.error = e.message;
+                }
+            }
+            const localTenantId = localStorage.getItem('rw_tenant_id');
+            out.tenant.tenantIdInLocalStorage = localTenantId || 'not set';
+            out.tenant.tenantIdInAppState = global.AppState?.tenant?.id || 'not set';
+            const session = await (new AuthManager(supabase)).getSession();
+            out.auth.hasSession = !!session?.user;
+            out.auth.userId = session?.user?.id || 'none';
+            out.auth.userEmail = session?.user?.email || 'none';
+            const tablesToCheck = ['products', 'categories', 'clients', 'sales'];
+            out.dataStore.cachedRows = {};
+            tablesToCheck.forEach(t => {
+                try {
+                    const cacheKey = `rw_cache_${localTenantId || 'default'}_${t}`;
+                    const raw = localStorage.getItem(cacheKey);
+                    out.dataStore.cachedRows[t] = raw ? JSON.parse(raw).length : 0;
+                } catch (e) {
+                    out.dataStore.cachedRows[t] = 'error: ' + e.message;
+                }
+            });
+            if (localTenantId && supabase) {
+                out.dataStore.cloudRows = {};
+                for (const t of tablesToCheck) {
+                    try {
+                        const { data, error } = await supabase.from(t).select('id').eq('tenant_id', localTenantId);
+                        out.dataStore.cloudRows[t] = error ? `ERROR: ${error.message}` : (data?.length || 0);
+                    } catch (e) {
+                        out.dataStore.cloudRows[t] = 'error: ' + e.message;
+                    }
+                }
+            }
+            out.localStorage.rwTenantId = localTenantId;
+            out.localStorage.sbUrl = localStorage.getItem('sb_url') || 'not set';
+            out.localStorage.sbAnonKeySet = !!localStorage.getItem('sb_anon_key');
+            out.localStorage.cacheKeys = Object.keys(localStorage).filter(k => k.startsWith('rw_')).slice(0, 10);
+            out.localStorage.totalRwKeys = Object.keys(localStorage).filter(k => k.startsWith('rw_')).length;
+            console.group('🔍 DIAGNÓSTICO DE SINCRONIZACIÓN');
+            console.log('1. Config Supabase:', out.config);
+            console.log('2. Cliente Supabase:', out.supabase);
+            console.log('3. Auth/Session:', out.auth);
+            console.log('4. Tenant:', out.tenant);
+            console.log('5. DataStore (cache local vs cloud):', out.dataStore);
+            console.log('6. localStorage:', out.localStorage);
+            console.log('💡 INTERPRETACIÓN:');
+            if (!out.config.urlConfigured || !out.config.anonKeySet) {
+                console.warn('   ❌ Supabase NO configurado en este navegador');
+                console.log('   → Solución: window.SupabaseClient.configure("URL", "KEY")');
+            } else if (!out.supabase.clientCreated) {
+                console.warn('   ❌ Cliente Supabase no se creó. Revisar console para errores');
+            } else if (!out.supabase.canReachAPI) {
+                console.warn('   ❌ No se puede conectar a Supabase API:', out.supabase.error);
+            } else if (!out.auth.hasSession) {
+                console.warn('   ⚠️ No hay sesión activa. Hacer login primero');
+            } else {
+                console.log('   ✅ Conexión OK con Supabase');
+                const products = out.dataStore.cachedRows.products;
+                const cloudProducts = out.dataStore.cloudRows?.products;
+                if (cloudProducts > products) {
+                    console.warn(`   ⚠️ Cloud tiene ${cloudProducts} productos pero cache local solo tiene ${products}`);
+                    console.log('   → Recargar la página o llamar: window.SupabaseClient.init()');
+                } else if (cloudProducts === products) {
+                    console.log('   ✅ Cache local sincronizado con cloud');
+                }
+            }
+            console.groupEnd();
+            return out;
+        },
     };
 
 })(window);
