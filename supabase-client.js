@@ -788,35 +788,40 @@
             }
 
             const sbTable = getSupabaseTableName(table);
-            const channelName = `${table}:${tenantId}`;
-            if (this.subscriptions[channelName]) {
-                this.subscriptions[channelName].unsubscribe();
+            // Un solo canal por tenant con múltiples listeners (.on por tabla)
+            const channelName = `tenant:${tenantId}`;
+            let channel = this.subscriptions[channelName];
+            if (!channel) {
+                channel = this.supabase.channel(channelName);
+                this.subscriptions[channelName] = channel;
             }
 
-            const channel = this.supabase
-                .channel(channelName)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: sbTable,
-                        filter: `tenant_id=eq.${tenantId}`,
-                    },
-                    (payload) => {
-                        this._handleRealtimeChange(table, payload);
-                        if (callback) callback(payload);
-                        // Dispatch custom event for legacy code
-                        window.dispatchEvent(new CustomEvent('supabase-realtime', {
-                            detail: { table, payload },
-                        }));
-                    }
-                )
-                .subscribe((status) => {
-                    console.log(`[Realtime] ${table} status:`, status);
-                });
+            // Registrar listener (un .on por tabla)
+            channel.on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: sbTable,
+                    filter: `tenant_id=eq.${tenantId}`,
+                },
+                (payload) => {
+                    this._handleRealtimeChange(table, payload);
+                    if (callback) callback(payload);
+                    window.dispatchEvent(new CustomEvent('supabase-realtime', {
+                        detail: { table, payload },
+                    }));
+                }
+            );
 
-            this.subscriptions[channelName] = channel;
+            // Suscribir solo la primera vez
+            if (!channel._subscribed) {
+                channel._subscribed = true;
+                channel.subscribe((status) => {
+                    console.log(`[Realtime] ${channelName} status:`, status);
+                });
+            }
+
             return channel;
         }
 

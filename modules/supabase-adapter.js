@@ -389,7 +389,7 @@
         // HELPER: Column whitelists per table for direct Supabase sync
         // ============================================================
         const TABLE_COLUMNS = {
-            products: new Set(['id','tenant_id','name','sku','price','cost','stock','min_stock','category','category_id','image','image_url','tax_id','tax_rate','is_active','has_variants','has_expiry','lot_number','expiry_date','variants','sizes','colors','unit','barcode','description','supplier_ids','cost_source','cost_calculation','sale_account_code','purchase_account_code','units_per_box','box_price','half_box_price','metadata','local_id','created_at','updated_at']),
+            products: new Set(['id','tenant_id','name','sku','price','cost','stock','min_stock','category_id','image_url','tax_id','tax_rate','is_active','has_variants','has_expiry','lot_number','expiry_date','variants','sizes','colors','unit','barcode','description','supplier_ids','cost_source','cost_calculation','sale_account_code','purchase_account_code','units_per_box','box_price','half_box_price','metadata','local_id','created_at','updated_at']),
             purchases: new Set(['id','tenant_id','supplier_id','locale_id','invoice_number','items','subtotal','tax_total','total','status','notes','local_id','created_at','updated_at']),
             clients: new Set(['id','tenant_id','first_name','last_name','email','phone','address','city','tax_id','notes','credit_limit','wallet_balance','loyalty_points','pin_hash','is_active','tier','loyalty_card_number','metadata','local_id','created_at','updated_at']),
             categories: new Set(['id','tenant_id','name','color','icon','sort_order','created_at','updated_at']),
@@ -482,6 +482,8 @@
                 const cat = (store.data.categories || []).find(c => c.name === normalized.category);
                 if (cat) normalized.categoryId = cat.id;
             }
+            // Eliminar campo category (nombre) — Supabase solo acepta category_id (UUID)
+            delete normalized.category;
             // Map taxId to tax_id and tax_rate
             if (normalized.taxId) {
                 normalized.tax_id = normalized.taxId;
