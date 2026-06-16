@@ -155,9 +155,8 @@
                 'crmCouponPurchases', 'reloadRequests', 'discountCampaigns',
                 'crmActivities', 'pendingTickets',
             ];
-            tables.forEach(t => {
-                sbDS.subscribeRealtime(t, tenantId, (payload) => this._applyRealtimeChange(t, payload));
-            });
+            // Suscribir a todas las tablas en un solo canal (todos los .on() antes de .subscribe())
+            sbDS.subscribeRealtimeAll(tables, tenantId, (table, payload) => this._applyRealtimeChange(table, payload));
         };
 
         DS._applyRealtimeChange = function (table, payload) {

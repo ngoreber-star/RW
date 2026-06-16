@@ -825,6 +825,50 @@
             return channel;
         }
 
+        // Suscribe a múltiples tablas en un solo canal (Realtime)
+        // Todos los .on() se agregan ANTES de subscribe() para evitar errores
+        subscribeRealtimeAll(tables, tenantId, onChangeCallback) {
+            if (!this.supabase || !this.supabase.channel) {
+                console.warn('[DataStore] Realtime not available');
+                return { unsubscribe: () => {} };
+            }
+            const channelName = `tenant:${tenantId}`;
+            let channel = this.subscriptions[channelName];
+            if (channel && channel._subscribed) {
+                return channel;
+            }
+            if (!channel) {
+                channel = this.supabase.channel(channelName);
+                this.subscriptions[channelName] = channel;
+            }
+            // Agregar TODOS los listeners ANTES de subscribe
+            tables.forEach(table => {
+                const sbTable = getSupabaseTableName(table);
+                channel.on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: sbTable,
+                        filter: `tenant_id=eq.${tenantId}`,
+                    },
+                    (payload) => {
+                        this._handleRealtimeChange(table, payload);
+                        if (onChangeCallback) onChangeCallback(table, payload);
+                        window.dispatchEvent(new CustomEvent('supabase-realtime', {
+                            detail: { table, payload },
+                        }));
+                    }
+                );
+            });
+            // Suscribir UNA vez
+            channel._subscribed = true;
+            channel.subscribe((status) => {
+                console.log(`[Realtime] ${channelName} status:`, status);
+            });
+            return channel;
+        }
+
         _handleRealtimeChange(table, payload) {
             const cache = this._loadCache(table);
             const { eventType, new: newRecord, old: oldRecord } = payload;
