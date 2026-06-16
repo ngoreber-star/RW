@@ -155,14 +155,22 @@
 
         DS._applyRealtimeChange = function (table, payload) {
             const { eventType, new: newRec } = payload;
+            // Los datos llegan en snake_case desde postgres_changes → convertir a camelCase
+            const rec = newRec && typeof newRec === 'object' && !Array.isArray(newRec)
+                ? Object.entries(newRec).reduce((acc, [k, v]) => {
+                    if (k === 'id' || k === 'tenant_id' || k === 'user_id' || k.startsWith('_')) { acc[k] = v; }
+                    else { acc[k.replace(/_([a-z])/g, (_, l) => l.toUpperCase())] = v; }
+                    return acc;
+                  }, {})
+                : newRec;
             const data = this.data[table] || [];
             if (eventType === 'INSERT') {
-                if (!data.find(d => d.id === newRec.id)) { data.push(newRec); this.save(table); this.notify(table); }
+                if (!data.find(d => d.id === rec.id)) { data.push(rec); this.save(table); this.notify(table); }
             } else if (eventType === 'UPDATE') {
-                const idx = data.findIndex(d => d.id === newRec.id);
-                if (idx >= 0) { data[idx] = { ...data[idx], ...newRec }; this.save(table); this.notify(table); }
+                const idx = data.findIndex(d => d.id === rec.id);
+                if (idx >= 0) { data[idx] = { ...data[idx], ...rec }; this.save(table); this.notify(table); }
             } else if (eventType === 'DELETE') {
-                this.data[table] = data.filter(d => d.id !== newRec.id); this.save(table); this.notify(table);
+                this.data[table] = data.filter(d => d.id !== rec.id); this.save(table); this.notify(table);
             }
         };
 
