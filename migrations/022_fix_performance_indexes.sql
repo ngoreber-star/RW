@@ -117,4 +117,7 @@ CREATE INDEX IF NOT EXISTS idx_products_barcode_lookup
     ON products(tenant_id, barcode)
     WHERE barcode IS NOT NULL;
 
+-- Recompute query planner statistics para índices nuevos
+ANALYZE;
+
 COMMIT;

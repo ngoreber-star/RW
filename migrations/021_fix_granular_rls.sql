@@ -33,6 +33,11 @@ BEGIN
     SELECT role INTO v_role
     FROM tenant_users
     WHERE user_id = auth.uid() AND tenant_id = p_tenant_id;
+
+    IF v_role IS NULL THEN
+        RAISE WARNING 'User % not in tenant %', auth.uid(), p_tenant_id;
+    END IF;
+
     RETURN v_role;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
@@ -294,7 +299,8 @@ DROP POLICY IF EXISTS tenant_users_isolation ON tenant_users;
 CREATE POLICY tenant_users_select ON tenant_users
     FOR SELECT USING (
         user_id = auth.uid()
-        OR tenant_id IN (SELECT get_session_tenant_ids())
+        OR (tenant_id IN (SELECT get_session_tenant_ids())
+            AND get_user_role(tenant_id) IN ('admin', 'manager', 'superadmin'))
     );
 CREATE POLICY tenant_users_insert ON tenant_users
     FOR INSERT WITH CHECK (
