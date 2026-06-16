@@ -467,27 +467,45 @@
                     }
                 }
             }
-            // Products: resolver category name/slug → category_id UUID de forma defensiva
+            // Products: resolver referencias UUID de forma defensiva
             if (collection === 'products') {
                 var categories = DS.data && DS.data.categories ? DS.data.categories : [];
+                var taxes = DS.data && DS.data.taxes ? DS.data.taxes : [];
+
+                // category_id: si no es UUID, intentar resolver por nombre; si falla, omitir
                 var rawCategory = cleaned.category_id;
                 if (rawCategory && !isUUID(rawCategory)) {
-                    // Puede ser un nombre de categoría que terminó como category_id
                     var matchedByName = categories.find(function (c) { return c.name === rawCategory; });
                     if (matchedByName) {
                         cleaned.category_id = matchedByName.id;
                     } else {
-                        // No se pudo resolver: mejor omitir que romper el INSERT
                         console.warn('[Adapter] cleanPayload: category_id no es UUID y no se encontró categoría:', rawCategory);
                         delete cleaned.category_id;
                     }
                 }
-                // Si por algún motivo quedó un campo category (nombre) en el payload,
-                // intentar resolverlo y descartar el nombre.
                 if (cleaned.category) {
                     var matched = categories.find(function (c) { return c.name === cleaned.category; });
                     if (matched) cleaned.category_id = matched.id;
                     delete cleaned.category;
+                }
+
+                // tax_id: el esquema puede ser TEXT o UUID. Si no es UUID, intentar
+                // resolver contra taxes por id o nombre; si no se puede y el DB espera UUID, omitir.
+                var rawTax = cleaned.tax_id;
+                if (rawTax && !isUUID(rawTax)) {
+                    var matchedTax = taxes.find(function (t) { return t.id === rawTax || t.name === rawTax; });
+                    if (matchedTax && isUUID(matchedTax.id)) {
+                        cleaned.tax_id = matchedTax.id;
+                    } else {
+                        console.warn('[Adapter] cleanPayload: tax_id no es UUID y no se encontró impuesto:', rawTax);
+                        delete cleaned.tax_id;
+                    }
+                }
+
+                // supplier_ids: filtrar solo UUIDs válidos
+                if (cleaned.supplier_ids && Array.isArray(cleaned.supplier_ids)) {
+                    cleaned.supplier_ids = cleaned.supplier_ids.filter(function (sid) { return isUUID(sid); });
+                    if (cleaned.supplier_ids.length === 0) delete cleaned.supplier_ids;
                 }
             }
             if (!cleaned.id) cleaned.id = genUUID();
