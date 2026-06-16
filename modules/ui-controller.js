@@ -3054,8 +3054,11 @@
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    this.currentProductImage = e.target.result;
-                    document.getElementById('productImagePreview').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                    const base64 = e.target.result;
+                    document.getElementById('productImagePreview').innerHTML = `<img src="${base64}" class="w-full h-full object-cover">`;
+                    // Guardar base64 para preview inmediato; upload a Storage se hace en saveProduct
+                    this.currentProductImage = base64;
+                    this._pendingImageUpload = { file, base64 };
                 };
                 reader.readAsDataURL(file);
             }

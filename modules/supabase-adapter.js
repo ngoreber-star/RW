@@ -503,10 +503,47 @@
             if (!skipCloudSave && !global.AppState?.practicalExam) {
                 const tenantId = this.cloud?.tenantId;
                 if (tenantId && tenantId !== 'default' && navigator.onLine) {
-                    const syncItem = collection === 'products' ? normalizeProductForSupabase(this, result) : result;
-                    const cleaned = cleanPayload(collection, syncItem, tenantId);
+                    // Upload image a Supabase Storage si hay pendiente
+                    if (collection === 'products' && global.ui?._pendingImageUpload) {
+                        var pending = global.ui._pendingImageUpload;
+                        var productId = item.id || result.id;
+                        var ext = pending.file.name.split('.').pop() || 'png';
+                        var storagePath = tenantId + '/products/' + productId + '/' + Date.now() + '.' + ext;
+                        (function (imgData, path) {
+                            getSupabase().then(function (pkg) {
+                                var binary = atob(imgData.split(',')[1]);
+                                var array = new Uint8Array(binary.length);
+                                for (var i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+                                pkg.supabase.storage.from('product-images').upload(path, array, {
+                                    contentType: 'image/' + ext,
+                                    upsert: true
+                                }).then(function (uploadRes) {
+                                    if (uploadRes.error) {
+                                        console.warn('[Adapter] Storage upload failed:', uploadRes.error.message);
+                                        return;
+                                    }
+                                    var publicUrl = pkg.supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+                                    // Actualizar item local con URL pública
+                                    var cached = pkg.dataStore._loadCache('products');
+                                    var idx = cached.findIndex(function (p) { return p.id === productId; });
+                                    if (idx >= 0) {
+                                        cached[idx].image = publicUrl;
+                                        pkg.dataStore._saveCache('products', cached);
+                                    }
+                                    // Actualizar en Supabase
+                                    pkg.supabase.from('products').update({ image_url: publicUrl })
+                                        .eq('id', productId).eq('tenant_id', tenantId).then(function () {}).catch(function () {});
+                                }).catch(function (err) {
+                                    console.warn('[Adapter] Storage upload error:', err.message);
+                                });
+                            }).catch(function () {});
+                        })(pending.base64, storagePath);
+                        global.ui._pendingImageUpload = null;
+                    }
+                    var syncItem = collection === 'products' ? normalizeProductForSupabase(this, result) : result;
+                    var cleaned = cleanPayload(collection, syncItem, tenantId);
                     if (cleaned) {
-                        const sbTable = getSbTable(collection);
+                        var sbTable = getSbTable(collection);
                         getSupabase().then(function (pkg) {
                             pkg.supabase.from(sbTable).insert(cleaned).then(function (res) {
                                 if (res.error) console.warn('[Adapter] Direct insert failed for', collection + ':', res.error.message);
