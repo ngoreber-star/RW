@@ -627,7 +627,6 @@
                 if (obj.contactPerson == null && obj.contact_name != null) obj.contactPerson = obj.contact_name;
                 if (obj.contactPerson == null && obj.contactName != null) obj.contactPerson = obj.contactName;
             }
-            }
             return obj;
         }
 

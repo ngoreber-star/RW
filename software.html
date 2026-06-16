@@ -7,7 +7,10 @@
     <meta name="theme-color" content="#0284c7">
     <script>
         if (location.protocol === 'http:' || location.protocol === 'https:') {
-            document.write('<link rel="manifest" href="manifest.webmanifest">');
+            var link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = 'manifest.webmanifest';
+            document.head.appendChild(link);
         }
     </script>
     <link rel="icon" type="image/png" href="logo-river.png">
