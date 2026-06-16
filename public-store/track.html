@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Seguir mi pedido | River-Wall</title>
+    <script src="../modules/security-utils.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="../env.js"></script>
+    <style>
+        * { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background:
+                radial-gradient(1200px 700px at -10% -20%, #bae6fd 0%, rgba(186,230,253,0) 45%),
+                radial-gradient(900px 500px at 110% 10%, #67e8f9 0%, rgba(103,232,249,0) 40%),
+                linear-gradient(160deg, #ecfeff 0%, #f8fafc 50%, #f1f5f9 100%);
+            min-height: 100vh;
+        }
+        
+        .glass {
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.42);
+        }
+        
+        .orb {
+            position: fixed;
+            border-radius: 9999px;
+            filter: blur(60px);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .orb-1 { width: 300px; height: 300px; background: #0ea5e9; top: -100px; left: -100px; animation: drift 18s ease-in-out infinite; }
+        .orb-2 { width: 400px; height: 400px; background: #22d3ee; bottom: -150px; right: -100px; animation: drift 22s ease-in-out infinite reverse; }
+        .orb-3 { width: 200px; height: 200px; background: #38bdf8; top: 40%; left: 60%; animation: drift 15s ease-in-out infinite 2s; }
+        
+        @keyframes drift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        }
+        
+        .timeline-dot {
+            width: 18px; height: 18px; border-radius: 50%;
+            border: 3px solid; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        .timeline-line {
+            width: 2px; flex: 1; margin: 4px 0;
+        }
+        
+        .chat-bubble-store {
+            border-radius: 16px 16px 16px 4px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+        }
+        
+        .chat-bubble-customer {
+            border-radius: 16px 16px 4px 16px;
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(255,255,255,0.6);
+            backdrop-filter: blur(8px);
+        }
+        
+        .shine {
+            position: relative; overflow: hidden;
+        }
+        .shine::after {
+            content: '';
+            position: absolute; inset: -1px;
+            background: linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 70%);
+            transform: translateX(-110%);
+            animation: sweep 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes sweep {
+            0% { transform: translateX(-110%); }
+            100% { transform: translateX(110%); }
+        }
+        
+        @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        
+        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        .float-anim { animation: float 3s ease-in-out infinite; }
+        
+        .toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%); z-index: 9999;
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        .brand-mono { font-family: 'Space Mono', monospace; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen relative">
+    <!-- Floating Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 bg-white/80 backdrop-blur-xl z-50 flex flex-col items-center justify-center">
+        <div class="relative">
+            <div class="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center shadow-lg shadow-primary-500/30 float-anim">
+                <i class="fas fa-box text-white text-xl"></i>
+            </div>
+            <div class="absolute inset-0 rounded-2xl border-2 border-primary-400/30 animate-ping"></div>
+        </div>
+        <p class="text-gray-500 text-sm mt-4 font-medium">Cargando...</p>
+    </div>
+
+    <!-- Header -->
+    <header class="relative z-10">
+        <div class="glass border-b border-white/40 shadow-sm">
+            <div class="max-w-3xl mx-auto px-4 py-4">
+                <div class="flex items-center gap-3">
+                    <a href="./index.html" class="w-10 h-10 rounded-xl bg-white/60 backdrop-blur border border-white/60 flex items-center justify-center shadow-sm hover:shadow-md transition-all active:scale-95">
+                        <i class="fas fa-arrow-left text-slate-600"></i>
+                    </a>
+                    <div>
+                        <h1 class="font-bold text-lg text-slate-800">Seguir mi pedido</h1>
+                        <p class="text-xs text-slate-500">Consulta el estado de tu pedido</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-6 relative z-10">
+        <!-- Search Form -->
+        <div id="searchForm" class="glass rounded-2xl p-6 shadow-lg border border-white/50">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-primary-100 to-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <i class="fas fa-box-open text-3xl text-primary-500"></i>
+                </div>
+                <h2 class="font-bold text-xl text-slate-800">¿Dónde está mi pedido?</h2>
+                <p class="text-sm text-slate-500 mt-1">Introduce el número de pedido que recibiste</p>
+            </div>
+            <div class="relative mb-4">
+                <i class="fas fa-hashtag absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="orderCodeInput" placeholder="Ej: ABC123" 
+                    class="w-full pl-11 pr-4 py-4 rounded-xl bg-white/70 backdrop-blur border border-white/60 text-center text-lg font-mono uppercase tracking-widest text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white/90 focus:border-primary-300 focus:ring-2 focus:ring-primary-100 shadow-sm transition-all"
+                    onkeypress="if(event.key==='Enter')app.trackOrder()">
+            </div>
+            <button onclick="app.trackOrder()" class="shine gradient-bg w-full py-4 rounded-xl text-white font-bold text-sm shadow-lg shadow-primary-500/30 transition-all active:scale-[0.98]">
+                <i class="fas fa-search mr-2"></i>Buscar pedido
+            </button>
+            <div id="searchError" class="hidden mt-3 p-3 bg-red-50 text-red-600 text-sm rounded-xl text-center border border-red-100"></div>
+        </div>
+
+        <!-- Order Details -->
+        <div id="orderDetails" class="hidden space-y-4">
+            <!-- Status Card -->
+            <div class="glass rounded-2xl p-5 shadow-lg border border-white/50">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase tracking-wide font-semibold">Pedido</p>
+                        <p id="detailOrderNumber" class="text-3xl font-bold gradient-text font-mono mt-1">#000</p>
+                    </div>
+                    <span id="detailStatusBadge" class="px-4 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">Pendiente</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="bg-white/50 rounded-xl p-3">
+                        <p class="text-slate-400 text-xs mb-1">Fecha</p>
+                        <p id="detailDate" class="font-semibold text-slate-700">-</p>
+                    </div>
+                    <div class="bg-white/50 rounded-xl p-3">
+                        <p class="text-slate-400 text-xs mb-1">Total</p>
+                        <p id="detailTotal" class="font-bold text-primary-600">-</p>
+                    </div>
+                    <div class="bg-white/50 rounded-xl p-3">
+                        <p class="text-slate-400 text-xs mb-1">Cliente</p>
+                        <p id="detailCustomer" class="font-semibold text-slate-700">-</p>
+                    </div>
+                    <div class="bg-white/50 rounded-xl p-3">
+                        <p class="text-slate-400 text-xs mb-1">Servicio</p>
+                        <p id="detailService" class="font-semibold text-slate-700">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="glass rounded-2xl p-5 shadow-lg border border-white/50">
+                <h3 class="font-bold text-sm text-slate-700 mb-4"><i class="fas fa-route text-primary-500 mr-2"></i>Estado del pedido</h3>
+                <div id="timeline" class="space-y-0 pl-1">
+                    <!-- Timeline items rendered here -->
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="glass rounded-2xl p-5 shadow-lg border border-white/50">
+                <h3 class="font-bold text-sm text-slate-700 mb-3"><i class="fas fa-shopping-bag text-primary-500 mr-2"></i>Productos</h3>
+                <div id="itemsList" class="space-y-2">
+                    <!-- Items rendered here -->
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="glass rounded-2xl shadow-lg border border-white/50 overflow-hidden flex flex-col" style="max-height: 70vh;">
+                <div class="p-4 border-b border-white/40 bg-gradient-to-r from-primary-50 to-blue-50">
+                    <h3 class="font-bold text-sm text-slate-700"><i class="fas fa-comments text-primary-500 mr-2"></i>Chat con la tienda</h3>
+                    <p class="text-xs text-slate-500">Recibe actualizaciones y haz preguntas</p>
+                </div>
+                <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white/30" style="min-height: 200px; max-height: 400px;">
+                    <div class="text-center text-slate-400 text-sm py-8">No hay mensajes aún</div>
+                </div>
+                <div class="p-3 border-t border-white/40 bg-white/50">
+                    <div class="flex gap-2">
+                        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." 
+                            class="flex-1 px-4 py-3 rounded-xl bg-white/70 backdrop-blur border border-white/60 text-sm focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100 transition-all"
+                            onkeypress="if(event.key==='Enter')app.sendMessage()">
+                        <button onclick="app.sendMessage()" class="w-12 h-12 rounded-xl gradient-bg text-white flex items-center justify-center shadow-lg shadow-primary-500/25 hover:shadow-xl transition-all active:scale-95 flex-shrink-0">
+                            <i class="fas fa-paper-plane text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Search -->
+            <button onclick="app.resetSearch()" class="w-full py-3.5 rounded-xl bg-white/60 backdrop-blur border border-white/60 text-slate-600 text-sm font-bold hover:bg-white/80 hover:shadow-md transition-all">
+                <i class="fas fa-search mr-2"></i>Buscar otro pedido
+            </button>
+        </div>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden">
+        <div class="bg-slate-800/90 backdrop-blur text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 border border-white/10">
+            <i id="toastIcon" class="fas fa-info-circle text-primary-400"></i>
+            <span id="toastMsg">Mensaje</span>
+        </div>
+    </div>
+
+    <!-- Supabase SDK + Compat Layer -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="../env.js"></script>
+    <script src="../supabase-client.js"></script>
+    <script src="../modules/firestore-compat.js?v=2"></script>
+
+    <script type="module">
+        const FC = window.FirestoreCompat;
+        const {
+            initializeApp, getFirestore,
+            collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp
+        } = FC;
+
+        const compatApp = initializeApp();
+        const db = getFirestore(compatApp);
+
+        window.app = {
+            db, currentOrder: null, messagesUnsub: null,
+
+            init() {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code') || params.get('order');
+                if (code) {
+                    document.getElementById('orderCodeInput').value = code;
+                    this.trackOrder();
+                }
+            },
+
+            async trackOrder() {
+                const urlParams = new URLSearchParams(window.location.search);
+                let tenantId = urlParams.get('tenant');
+                const input = document.getElementById('orderCodeInput').value.trim().toUpperCase();
+                const errorDiv = document.getElementById('searchError');
+                if (!input) {
+                    errorDiv.textContent = 'Introduce un número de pedido';
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+
+                errorDiv.classList.add('hidden');
+                document.getElementById('loadingScreen').classList.remove('hidden');
+
+                try {
+                    let order = null;
+                    let foundTenantId = tenantId;
+
+                    if (tenantId) {
+                        const codeDoc = await getDoc(doc(db, 'rw_tenants', tenantId, 'publicOrderCodes', input));
+                        if (codeDoc.exists()) {
+                            const { orderId } = codeDoc.data();
+                            const orderDoc = await getDoc(doc(db, 'rw_tenants', tenantId, 'publicOrders', orderId));
+                            if (orderDoc.exists()) {
+                                order = orderDoc.data();
+                            }
+                        }
+                    }
+
+                    if (!order) {
+                        document.getElementById('loadingScreen').classList.add('hidden');
+                        errorDiv.textContent = 'No se encontró ningún pedido con ese código. Verifica e inténtalo de nuevo.';
+                        errorDiv.classList.remove('hidden');
+                        return;
+                    }
+
+                    this.currentOrder = order;
+                    this.renderOrder(order);
+                    this.listenToMessages(order.id, foundTenantId || order.tenantId);
+                    document.getElementById('searchForm').classList.add('hidden');
+                    document.getElementById('orderDetails').classList.remove('hidden');
+                    document.getElementById('orderDetails').classList.add('slide-up');
+                } catch (err) {
+                    console.error(err);
+                    errorDiv.textContent = 'Error al buscar: ' + err.message;
+                    errorDiv.classList.remove('hidden');
+                } finally {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                }
+            },
+
+            renderOrder(order) {
+                const shortId = order.orderCode || (order.id ? order.id.slice(-6).toUpperCase() : '-');
+                document.getElementById('detailOrderNumber').textContent = '#' + shortId;
+                document.getElementById('detailDate').textContent = order.createdAt?.seconds 
+                    ? new Date(order.createdAt.seconds * 1000).toLocaleString() 
+                    : new Date(order.createdAt || Date.now()).toLocaleString();
+                document.getElementById('detailTotal').textContent = this.formatMoney(order.total || 0, order.currency);
+                document.getElementById('detailCustomer').textContent = order.customerName || '-';
+                const serviceMap = { pickup: 'Recogida', delivery: 'Delivery', dine_in: 'En mesa' };
+                document.getElementById('detailService').textContent = serviceMap[order.serviceType] || order.serviceType || '-';
+
+                const statusMap = {
+                    pending: { text: 'Pendiente', class: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'fa-clock' },
+                    confirmed: { text: 'Confirmado', class: 'bg-blue-100 text-blue-700 border-blue-200', icon: 'fa-check' },
+                    preparing: { text: 'Preparando', class: 'bg-orange-100 text-orange-700 border-orange-200', icon: 'fa-fire' },
+                    ready: { text: 'Listo', class: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: 'fa-bell' },
+                    delivered: { text: 'Entregado', class: 'bg-slate-100 text-slate-700 border-slate-200', icon: 'fa-check-double' },
+                    cancelled: { text: 'Cancelado', class: 'bg-red-100 text-red-700 border-red-200', icon: 'fa-times' }
+                };
+                const s = statusMap[order.status] || { text: order.status, class: 'bg-gray-100 text-gray-700 border-gray-200', icon: 'fa-question' };
+                const badge = document.getElementById('detailStatusBadge');
+                badge.textContent = s.text;
+                badge.className = `px-4 py-1.5 rounded-full text-xs font-bold border ${s.class}`;
+
+                const steps = [
+                    { key: 'pending', label: 'Pedido recibido', icon: 'fa-clipboard-list', desc: 'Hemos recibido tu pedido' },
+                    { key: 'confirmed', label: 'Confirmado', icon: 'fa-check', desc: 'La tienda ha confirmado tu pedido' },
+                    { key: 'preparing', label: 'En preparación', icon: 'fa-fire', desc: 'Estamos preparando tu pedido' },
+                    { key: 'ready', label: 'Listo', icon: 'fa-bell', desc: 'Tu pedido está listo' },
+                    { key: 'delivered', label: 'Entregado', icon: 'fa-check-double', desc: 'Pedido completado' }
+                ];
+                const currentIdx = steps.findIndex(st => st.key === order.status);
+                const cancelled = order.status === 'cancelled';
+
+                document.getElementById('timeline').innerHTML = steps.map((step, idx) => {
+                    const isDone = cancelled ? false : idx <= currentIdx;
+                    const isCurrent = !cancelled && idx === currentIdx;
+                    const dotColor = isDone ? 'bg-emerald-500 border-emerald-500' : (isCurrent ? 'bg-primary-500 border-primary-500' : 'bg-white border-slate-300');
+                    const lineColor = isDone ? 'bg-gradient-to-b from-emerald-500 to-emerald-400' : 'bg-slate-200';
+                    const textColor = isDone || isCurrent ? 'text-slate-700' : 'text-slate-400';
+                    const iconColor = isDone || isCurrent ? 'text-white' : 'text-slate-400';
+                    return `
+                        <div class="flex gap-4">
+                            <div class="flex flex-col items-center pt-1">
+                                <div class="timeline-dot ${dotColor} shadow-sm">
+                                    <i class="fas ${step.icon} text-[7px] ${iconColor}"></i>
+                                </div>
+                                ${idx < steps.length - 1 ? `<div class="timeline-line ${lineColor}"></div>` : ''}
+                            </div>
+                            <div class="pb-6 pt-0.5">
+                                <p class="text-sm font-bold ${textColor}">${step.label}</p>
+                                <p class="text-xs text-slate-500">${step.desc}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('') + (cancelled ? `
+                    <div class="flex gap-4">
+                        <div class="flex flex-col items-center pt-1">
+                            <div class="timeline-dot bg-red-500 border-red-500 shadow-sm">
+                                <i class="fas fa-times text-[7px] text-white"></i>
+                            </div>
+                        </div>
+                        <div class="pb-6 pt-0.5">
+                            <p class="text-sm font-bold text-red-600">Cancelado</p>
+                            <p class="text-xs text-slate-500">Este pedido ha sido cancelado</p>
+                        </div>
+                    </div>
+                ` : '');
+
+                document.getElementById('itemsList').innerHTML = (order.items || []).map(item => `
+                    <div class="flex justify-between items-center py-3 border-b last:border-0 border-white/40">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center shadow-sm">
+                                <i class="fas fa-box text-slate-400 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-700">${this.escapeHtml(item.name)}</p>
+                                <p class="text-xs text-slate-500">${item.qty} x ${this.formatMoney(item.price || 0, order.currency)}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm font-bold text-slate-700">${this.formatMoney((item.price || 0) * item.qty, order.currency)}</p>
+                    </div>
+                `).join('');
+            },
+
+            listenToMessages(orderId, tenantId) {
+                if (this.messagesUnsub) this.messagesUnsub();
+                const chatContainer = document.getElementById('chatMessages');
+                
+                if (!tenantId || !orderId) return;
+                
+                const q = query(
+                    collection(db, 'rw_tenants', tenantId, 'publicOrders', orderId, 'messages'),
+                    orderBy('createdAt', 'asc')
+                );
+                
+                this.messagesUnsub = onSnapshot(q, (snap) => {
+                    if (snap.empty) {
+                        chatContainer.innerHTML = '<div class="text-center text-slate-400 text-sm py-8">No hay mensajes aún. La tienda te informará aquí del estado de tu pedido.</div>';
+                        return;
+                    }
+                    chatContainer.innerHTML = snap.docs.map(d => {
+                        const msg = d.data();
+                        const isStore = msg.sender === 'store';
+                        const time = msg.createdAt?.seconds 
+                            ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+                            : '';
+                        return `
+                            <div class="flex ${isStore ? 'justify-start' : 'justify-end'} fade-in">
+                                <div class="max-w-[80%]">
+                                    <div class="${isStore ? 'chat-bubble-store' : 'chat-bubble-customer'} px-4 py-2.5 text-sm shadow-sm">
+                                        <p>${this.escapeHtml(msg.text)}</p>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 mt-1 ${isStore ? 'text-left' : 'text-right'}">${isStore ? 'Tienda' : 'Tú'} · ${time}</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }, err => {
+                    console.warn('Chat error:', err);
+                    chatContainer.innerHTML = '<div class="text-center text-slate-400 text-sm py-8">No se pudieron cargar los mensajes</div>';
+                });
+            },
+
+            async sendMessage() {
+                const input = document.getElementById('chatInput');
+                const text = input.value.trim();
+                if (!text || !this.currentOrder) return;
+
+                const order = this.currentOrder;
+                const tenantId = order.tenantId;
+                const orderId = order.id;
+                if (!tenantId || !orderId) return;
+
+                input.value = '';
+                try {
+                    const msgId = `msg_${Date.now()}`;
+                    await setDoc(doc(db, 'rw_tenants', tenantId, 'publicOrders', orderId, 'messages', msgId), {
+                        id: msgId, text, sender: 'customer',
+                        senderName: order.customerName || 'Cliente',
+                        createdAt: serverTimestamp(), tenantId
+                    });
+                } catch (err) {
+                    console.error(err);
+                    this.showToast('No se pudo enviar el mensaje', 'error');
+                }
+            },
+
+            resetSearch() {
+                if (this.messagesUnsub) this.messagesUnsub();
+                this.currentOrder = null;
+                document.getElementById('orderDetails').classList.add('hidden');
+                document.getElementById('searchForm').classList.remove('hidden');
+                document.getElementById('orderCodeInput').value = '';
+                document.getElementById('searchError').classList.add('hidden');
+            },
+
+            formatMoney(amount, currency) {
+                return (amount || 0).toLocaleString('es-ES') + ' ' + (currency || 'XAF');
+            },
+
+            escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            },
+
+            showToast(msg, type = 'info') {
+                const toast = document.getElementById('toast');
+                const icon = document.getElementById('toastIcon');
+                const text = document.getElementById('toastMsg');
+                text.textContent = msg;
+                icon.className = type === 'error' ? 'fas fa-exclamation-circle text-red-400' : 'fas fa-info-circle text-primary-400';
+                toast.classList.remove('hidden');
+                setTimeout(() => toast.classList.add('hidden'), 3000);
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>

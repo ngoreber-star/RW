@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'none'; object-src 'none'; manifest-src 'self'; base-uri 'self'; form-action 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0284c7">
+    <link rel="manifest" href="manifest.webmanifest">
+    <title>RIVER-WALL | SuperAdmin Panel</title>
+    <script src="modules/security-utils.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="vendor/tailwindcss.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { primary: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-text { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .btn-primary-gradient { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
+        .nav-active { background: #f0f9ff; color: #0284c7; font-weight: 600; }
+        .dark .nav-active { background: #0c4a6e; color: #bae6fd; }
+        .status-active { background: #10b981; }
+        .status-inactive { background: #ef4444; }
+        .status-pending { background: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 antialiased">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-700 via-primary-800 to-primary-900">
+        <div class="w-full max-w-md p-8">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center mb-4">
+                    <span class="text-4xl">🏝️</span>
+                </div>
+                <h1 class="text-3xl font-black text-white">SUPERADMIN</h1>
+                <p class="text-primary-200">Panel de Administración</p>
+            </div>
+            <div id="configPanel" class="hidden bg-white/10 backdrop-blur rounded-2xl p-6 shadow-2xl mb-4">
+                <h3 class="text-white font-bold mb-2">Configurar Supabase</h3>
+                <p class="text-primary-200 text-sm mb-4">Introduce los datos de tu proyecto Supabase</p>
+                <form id="configForm" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-1">URL del proyecto</label>
+                        <input type="url" id="configUrl" required class="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="https://abcdefgh12345678.supabase.co">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-1">Anon Key (public)</label>
+                        <input type="text" id="configKey" required class="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="eyJhbGciOiJIUzI1NiIs...">
+                    </div>
+                    <button type="submit" class="w-full py-3 rounded-xl bg-white text-primary-700 font-bold hover:bg-gray-100 transition">Guardar y continuar</button>
+                </form>
+            </div>
+            <div class="bg-white/10 backdrop-blur rounded-2xl p-6 shadow-2xl">
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-1">Email</label>
+                        <input type="email" id="loginEmail" required class="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="superadmin@dwall.sl">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-1">Contraseña</label>
+                        <input type="password" id="loginPassword" required class="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="w-full py-3 rounded-xl bg-white text-primary-700 font-bold hover:bg-gray-100 transition">Acceder</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen">
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
+            <div class="px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center text-white font-bold">SA</div>
+                    <div>
+                        <h1 class="font-bold text-lg">RIVER-WALL</h1>
+                        <p class="text-xs text-gray-500">SuperAdmin Panel</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="app.logout()" class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-white dark:bg-gray-800 min-h-screen border-r dark:border-gray-700">
+                <nav class="p-4 space-y-1">
+                    <button onclick="app.navigate('overview', this)" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition nav-active">
+                        <i class="fas fa-chart-line w-5"></i><span>Overview</span>
+                    </button>
+                    <button onclick="app.navigate('tenants', this)" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-building w-5"></i><span>Tenants</span>
+                    </button>
+                    <button onclick="app.navigate('licenses', this)" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-key w-5"></i><span>Licencias</span>
+                    </button>
+                    <button onclick="app.navigate('users', this)" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-users w-5"></i><span>Usuarios</span>
+                    </button>
+                    <button onclick="app.navigate('system', this)" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-cog w-5"></i><span>Sistema</span>
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 p-8">
+                <!-- Overview -->
+                <div id="page-overview" class="page">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold gradient-text">Dashboard Global</h2>
+                        <p class="text-gray-500">Monitoreo de todos los tenants</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 card-hover shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div><p class="text-gray-500 text-sm">Total Tenants</p><p id="totalTenants" class="text-3xl font-bold">0</p></div>
+                                <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl"><i class="fas fa-building"></i></div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 card-hover shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div><p class="text-gray-500 text-sm">Activos</p><p id="activeTenants" class="text-3xl font-bold text-emerald-600">0</p></div>
+                                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl"><i class="fas fa-check-circle"></i></div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 card-hover shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div><p class="text-gray-500 text-sm">Licencias Vencidas</p><p id="expiredLicenses" class="text-3xl font-bold text-red-600">0</p></div>
+                                <div class="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xl"><i class="fas fa-exclamation-triangle"></i></div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 card-hover shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div><p class="text-gray-500 text-sm">Usuarios Totales</p><p id="totalUsers" class="text-3xl font-bold">0</p></div>
+                                <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl"><i class="fas fa-users"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                            <h3 class="font-bold text-lg mb-4">Actividad Reciente</h3>
+                            <div id="recentActivityList" class="space-y-3">
+                                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700 text-sm text-gray-500">Sin actividad reciente</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                            <h3 class="font-bold text-lg mb-4">Tenants por Plan</h3>
+                            <div class="h-64"><canvas id="plansChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tenants -->
+                <div id="page-tenants" class="page hidden">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Gestión de Tenants</h2>
+                            <p class="text-gray-500">Administrar empresas/clientes</p>
+                        </div>
+                        <button onclick="app.openTenantModal()" class="px-6 py-3 rounded-xl btn-primary-gradient text-white font-medium">
+                            <i class="fas fa-plus mr-2"></i>Nuevo Tenant
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="p-4 border-b dark:border-gray-700 flex gap-4">
+                            <div class="relative flex-1 max-w-md">
+                                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" id="tenantSearch" oninput="app.filterTenants()" placeholder="Buscar tenants..." class="w-full pl-11 pr-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                            </div>
+                            <select id="tenantStatusFilter" onchange="app.filterTenants()" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                <option value="all">Todos los estados</option>
+                                <option value="active">Activo</option>
+                                <option value="inactive">Inactivo</option>
+                                <option value="pending">Pendiente</option>
+                            </select>
+                        </div>
+                        <table class="w-full">
+                            <thead class="bg-gray-50 dark:bg-gray-700 text-left">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold text-sm">Tenant</th>
+                                    <th class="px-6 py-4 font-semibold text-sm">Plan</th>
+                                    <th class="px-6 py-4 font-semibold text-sm">Usuarios</th>
+                                    <th class="px-6 py-4 font-semibold text-sm text-center">Estado</th>
+                                    <th class="px-6 py-4 font-semibold text-sm text-right">Expira</th>
+                                    <th class="px-6 py-4 font-semibold text-sm text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y dark:divide-gray-700" id="tenantsTable">
+                                <tr><td colspan="6" class="px-6 py-10 text-center text-gray-500">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Licenses -->
+                <div id="page-licenses" class="page hidden">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Gestión de Licencias</h2>
+                            <p class="text-gray-500">Crear y administrar licencias</p>
+                        </div>
+                        <button onclick="app.openLicenseModal()" class="px-6 py-3 rounded-xl btn-primary-gradient text-white font-medium">
+                            <i class="fas fa-key mr-2"></i>Asignar Licencia
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 dark:bg-gray-700 text-left text-sm">
+                                    <tr>
+                                        <th class="px-4 py-3">ID</th>
+                                        <th class="px-4 py-3">Tenant</th>
+                                        <th class="px-4 py-3">Plan</th>
+                                        <th class="px-4 py-3">Vence</th>
+                                        <th class="px-4 py-3 text-center">Estado</th>
+                                        <th class="px-4 py-3 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm divide-y dark:divide-gray-700" id="licensesTable">
+                                    <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users -->
+                <div id="page-users" class="page hidden">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Usuarios Globales</h2>
+                            <p class="text-gray-500">Todos los usuarios del sistema</p>
+                        </div>
+                        <button onclick="app.openUserModal()" class="px-6 py-3 rounded-xl btn-primary-gradient text-white font-medium">
+                            <i class="fas fa-user-plus mr-2"></i>Nuevo Usuario
+                        </button>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 dark:bg-gray-700 text-left">
+                                <tr><th class="px-6 py-4 font-semibold text-sm">Usuario</th><th class="px-6 py-4 font-semibold text-sm">Tenant</th><th class="px-6 py-4 font-semibold text-sm">Rol</th><th class="px-6 py-4 font-semibold text-sm text-center">Estado</th><th class="px-6 py-4 font-semibold text-sm text-right">Último Acceso</th><th class="px-6 py-4 font-semibold text-sm text-right">Acciones</th></tr>
+                            </thead>
+                            <tbody class="divide-y dark:divide-gray-700" id="usersTable">
+                                <tr><td colspan="6" class="px-6 py-10 text-center text-gray-500">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- System -->
+                <div id="page-system" class="page hidden">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold gradient-text">Configuración del Sistema</h2>
+                        <p class="text-gray-500">Parámetros globales</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                            <h3 class="font-bold mb-4">Base de Datos</h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                                    <span class="text-gray-600">Estado</span>
+                                    <span class="text-emerald-600 font-medium"><i class="fas fa-circle text-xs mr-1"></i>Conectado</span>
+                                </div>
+                                <div class="flex justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                                    <span class="text-gray-600">Tenants</span>
+                                    <span id="systemTenantsCount" class="font-medium">0</span>
+                                </div>
+                                <div class="flex justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                                    <span class="text-gray-600">Usuarios</span>
+                                    <span id="systemUsersCount" class="font-medium">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                            <h3 class="font-bold mb-4">Mantenimiento</h3>
+                            <div class="space-y-3">
+                                <button onclick="app.clearCache()" class="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-left flex items-center gap-3">
+                                    <i class="fas fa-broom text-amber-500"></i><span>Limpiar caché local</span>
+                                </button>
+                                <button onclick="location.reload()" class="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-left flex items-center gap-3">
+                                    <i class="fas fa-sync text-blue-500"></i><span>Recargar datos</span>
+                                </button>
+                                <button onclick="app.toggle2FA()" class="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-left flex items-center gap-3">
+                                    <i id="icon2FA" class="fas fa-shield-alt text-emerald-500"></i><span id="label2FA">Configurar 2FA</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="app.closeModal()"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto">
+            <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-xl font-bold">Título</h3>
+                <button onclick="app.closeModal()" class="w-10 h-10 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="modalContent" class="p-6"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="env.js"></script>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // Supabase init
+        let SUPABASE_URL = window.ENV?.SUPABASE?.URL || localStorage.getItem('sb_url') || '';
+        let SUPABASE_KEY = window.ENV?.SUPABASE?.ANON_KEY || localStorage.getItem('sb_anon_key') || '';
+
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+            // Mostrar panel de configuración
+            document.getElementById('configPanel').classList.remove('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('configForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const url = document.getElementById('configUrl').value.trim();
+                const key = document.getElementById('configKey').value.trim();
+                if (!url || !key) return;
+                localStorage.setItem('sb_url', url);
+                localStorage.setItem('sb_anon_key', key);
+                location.reload();
+            });
+            return; // Detener inicialización hasta que recargue
+        }
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
+        });
+
+        const app = {
+            currentPage: 'overview',
+            isLoggedIn: false,
+            currentUser: null,
+            tenants: [],
+            users: [],
+            licenses: [],
+            chart: null,
+
+            async init() {
+                document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.login();
+                });
+
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    await this.handleAuth(session.user);
+                } else {
+                    this.showLogin();
+                }
+
+                supabase.auth.onAuthStateChange(async (event, session) => {
+                    if (event === 'SIGNED_IN' && session?.user) {
+                        await this.handleAuth(session.user);
+                    } else if (event === 'SIGNED_OUT') {
+                        this.showLogin();
+                    }
+                });
+            },
+
+            async handleAuth(user) {
+                try {
+                    let isSA = false;
+
+                    // Check if user is already superadmin
+                    const { data: saCheck, error: saErr } = await supabase.rpc('is_superadmin', { p_user_id: user.id });
+                    if (!saErr && saCheck) {
+                        isSA = true;
+                    }
+
+                    // Bootstrap: if no superadmins exist, auto-promote this first user
+                    if (!isSA) {
+                        const { data: bootstrapped, error: bootErr } = await supabase.rpc('bootstrap_superadmin', { p_user_id: user.id });
+                        if (!bootErr && bootstrapped) {
+                            isSA = true;
+                            console.log('[SuperAdmin] Auto-bootstrapped as first superadmin');
+                        }
+                    }
+
+                    if (!isSA) {
+                        alert('Tu cuenta no tiene permisos de superadmin.');
+                        await supabase.auth.signOut();
+                        return;
+                    }
+                    this.currentUser = user;
+                    this.showDashboard();
+                    await this.loadAllData();
+                } catch (err) {
+                    console.error('Auth handler error:', err);
+                    alert('Error verificando permisos de superadmin.');
+                    await supabase.auth.signOut();
+                }
+            },
+
+            showLogin() {
+                this.isLoggedIn = false;
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+            },
+
+            showDashboard() {
+                this.isLoggedIn = true;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+            },
+
+            async verify2FA() {
+                return new Promise((resolve) => {
+                    const code = prompt('Código 2FA (6 dígitos de tu app autenticadora):');
+                    if (!code) { resolve(false); return; }
+                    if (!/^\d{6}$/.test(code)) { alert('El código debe tener 6 dígitos.'); resolve(false); return; }
+                    if (window.RWSecurity?.verifyTOTP) {
+                        const email = document.getElementById('loginEmail').value.trim();
+                        const secret = window.RWSecurity.getTOTPSecret(email);
+                        if (!secret) { resolve(true); return; }
+                        window.RWSecurity.verifyTOTP(code, secret).then(resolve).catch(() => resolve(false));
+                    } else {
+                        resolve(true);
+                    }
+                });
+            },
+
+            async login() {
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                const btn = document.querySelector('#loginForm button[type="submit"]');
+                if (!email || !password) return;
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Entrando...'; }
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    if (btn) { btn.disabled = false; btn.innerHTML = 'Acceder'; }
+                    console.error('[Login] Supabase error:', error);
+                    let msg = error.message;
+                    if (error.code === 'invalid_credentials') msg = 'Email o contraseña incorrectos.';
+                    if (error.code === 'email_not_confirmed') msg = 'El email no está confirmado.';
+                    alert('Error de acceso: ' + msg + '\n\nCódigo: ' + (error.code || 'N/A'));
+                    return;
+                }
+                // 2FA verification (ISO 27001 A.9.4.2)
+                if (window.RWSecurity?.is2FAEnabled && window.RWSecurity.is2FAEnabled(email)) {
+                    const verified = await this.verify2FA();
+                    if (!verified) {
+                        if (btn) { btn.disabled = false; btn.innerHTML = 'Acceder'; }
+                        alert('Código 2FA incorrecto. Acceso denegado.');
+                        await supabase.auth.signOut();
+                        return;
+                    }
+                }
+                if (btn) { btn.disabled = false; btn.innerHTML = 'Acceder'; }
+            },
+
+            async logout() {
+                await supabase.auth.signOut();
+            },
+
+            navigate(page, btnElement) {
+                document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+                document.getElementById('page-' + page).classList.remove('hidden');
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
+                const btn = btnElement || document.querySelector(`.nav-item[onclick*="'${page}'"]`);
+                if (btn) btn.classList.add('nav-active');
+                this.currentPage = page;
+            },
+
+            async loadAllData() {
+                try {
+                    const [{ data: tenants, error: tErr }, { data: users, error: uErr }, { data: licenses, error: lErr }] = await Promise.all([
+                        supabase.rpc('get_all_tenants'),
+                        supabase.rpc('get_all_users'),
+                        supabase.rpc('get_all_licenses')
+                    ]);
+
+                    if (tErr) console.warn('Tenants error:', tErr);
+                    if (uErr) console.warn('Users error:', uErr);
+                    if (lErr) console.warn('Licenses error:', lErr);
+
+                    this.tenants = tenants || [];
+                    this.users = users || [];
+                    this.licenses = licenses || [];
+
+                    this.renderTenants();
+                    this.renderUsers();
+                    this.renderLicenses();
+                    this.renderOverview();
+                    this.renderSystemStats();
+                    this.initCharts();
+                } catch (err) {
+                    console.error('loadAllData error:', err);
+                    alert('Error cargando datos. Revisa la consola.');
+                }
+            },
+
+            toDate(value) {
+                if (!value) return null;
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? null : date;
+            },
+
+            timeAgo(date) {
+                if (!date) return 'Sin fecha';
+                const diff = Date.now() - date.getTime();
+                const minutes = Math.floor(diff / 60000);
+                if (minutes < 1) return 'Hace un momento';
+                if (minutes < 60) return `Hace ${minutes} min`;
+                const hours = Math.floor(minutes / 60);
+                if (hours < 24) return `Hace ${hours} h`;
+                const days = Math.floor(hours / 24);
+                return `Hace ${days} d`;
+            },
+
+            renderOverview() {
+                const totalTenants = this.tenants.length;
+                const activeTenants = this.tenants.filter(t => t.status === 'active').length;
+                const now = Date.now();
+                const expiredLicenses = this.licenses.filter(l => {
+                    const ts = new Date(l.expires_at || 0).getTime();
+                    return ts > 0 && ts < now;
+                }).length;
+                const totalUsers = this.users.length;
+
+                document.getElementById('totalTenants').textContent = totalTenants;
+                document.getElementById('activeTenants').textContent = activeTenants;
+                document.getElementById('expiredLicenses').textContent = expiredLicenses;
+                document.getElementById('totalUsers').textContent = totalUsers;
+            },
+
+            renderSystemStats() {
+                document.getElementById('systemTenantsCount').textContent = this.tenants.length;
+                document.getElementById('systemUsersCount').textContent = this.users.length;
+            },
+
+            filterTenants() {
+                const search = (document.getElementById('tenantSearch')?.value || '').toLowerCase();
+                const status = document.getElementById('tenantStatusFilter')?.value || 'all';
+                this.renderTenants(search, status);
+            },
+
+            renderTenants(search = '', statusFilter = 'all') {
+                const tbody = document.getElementById('tenantsTable');
+                let rows = this.tenants;
+                if (search) rows = rows.filter(t => (t.name || '').toLowerCase().includes(search) || (t.business_name || '').toLowerCase().includes(search));
+                if (statusFilter !== 'all') rows = rows.filter(t => t.status === statusFilter);
+
+                tbody.innerHTML = rows.map(t => {
+                    const expires = t.license_expires ? new Date(t.license_expires).toLocaleDateString('es-ES') : '-';
+                    const planClass = t.plan === 'enterprise' ? 'bg-purple-100 text-purple-700' : t.plan === 'pro' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700';
+                    const statusClass = t.status === 'active' ? 'bg-emerald-100 text-emerald-700' : t.status === 'inactive' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700';
+                    return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold">${(t.name || 'T').charAt(0)}</div>
+                                <div>
+                                    <p class="font-medium">${t.name || ''}</p>
+                                    <p class="text-xs text-gray-500">${t.business_name || ''}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-medium ${planClass}">${t.plan || 'lite'}</span></td>
+                        <td class="px-6 py-4">${Number(t.user_count) || 0}</td>
+                        <td class="px-6 py-4 text-center"><span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${t.status || 'active'}</span></td>
+                        <td class="px-6 py-4 text-right text-sm">${expires}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="app.openTenantModal('${t.id}')" class="text-primary-600 hover:text-primary-700 mr-3" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button onclick="app.deleteTenant('${t.id}')" class="text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="px-6 py-10 text-center text-gray-500">No hay tenants registrados</td></tr>';
+            },
+
+            renderLicenses() {
+                const tbody = document.getElementById('licensesTable');
+                const now = Date.now();
+                tbody.innerHTML = this.licenses.map(l => {
+                    const expiry = l.expires_at ? new Date(l.expires_at).toLocaleDateString('es-ES') : '-';
+                    const isExpired = l.expires_at && new Date(l.expires_at).getTime() < now;
+                    const planClass = l.plan === 'enterprise' ? 'bg-purple-100 text-purple-700' : l.plan === 'pro' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700';
+                    const statusClass = l.status === 'active' && !isExpired ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+                    const statusLabel = isExpired ? 'vencida' : (l.status || 'active');
+                    return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-4 py-3 font-mono text-xs text-gray-500">${(l.id || '').substring(0, 8)}…</td>
+                        <td class="px-4 py-3">${l.tenant_name || ''}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${planClass}">${l.plan || 'lite'}</span></td>
+                        <td class="px-4 py-3 text-gray-600">${expiry}</td>
+                        <td class="px-4 py-3 text-center"><span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusLabel}</span></td>
+                        <td class="px-4 py-3 text-right">
+                            <button onclick="app.deleteLicense('${l.id}')" class="text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay licencias generadas</td></tr>';
+            },
+
+            renderUsers() {
+                const tbody = document.getElementById('usersTable');
+                tbody.innerHTML = this.users.map(u => {
+                    const lastSignIn = u.last_sign_in_at ? this.timeAgo(new Date(u.last_sign_in_at)) : 'Nunca';
+                    return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold">${(u.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2)}</div>
+                                <div><p class="font-medium">${u.name || ''}</p><p class="text-xs text-gray-500">${u.email || ''}</p></div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">${u.tenant_name || '-'}</td>
+                        <td class="px-6 py-4">${u.role || 'seller'}</td>
+                        <td class="px-6 py-4 text-center"><span class="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">active</span></td>
+                        <td class="px-6 py-4 text-right text-sm">${lastSignIn}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="app.openEditUserModal('${u.id}')" class="text-primary-600 hover:text-primary-700 mr-3" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button onclick="app.deleteUser('${u.id}')" class="text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="px-6 py-10 text-center text-gray-500">No hay usuarios registrados</td></tr>';
+            },
+
+            // ========== MODALS & ACTIONS ==========
+
+            openLicenseModal() {
+                document.getElementById('modalTitle').textContent = 'Asignar Licencia';
+                const tenantOptions = this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                document.getElementById('modalContent').innerHTML = `
+                    <form id="licenseModalForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Tenant</label>
+                            <select id="mlLicenseTenant" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">${tenantOptions}</select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Plan</label>
+                            <select id="mlLicensePlan" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                <option value="lite">Lite</option>
+                                <option value="pro">Pro</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Duración (días)</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="number" id="mlLicenseDays" value="30" min="1" class="flex-1 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                <button type="button" onclick="document.getElementById('mlLicenseDays').value=30" class="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200">30d</button>
+                                <button type="button" onclick="document.getElementById('mlLicenseDays').value=90" class="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200">90d</button>
+                                <button type="button" onclick="document.getElementById('mlLicenseDays').value=365" class="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200">1 año</button>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" onclick="app.closeModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                            <button type="submit" class="px-4 py-2 rounded-xl btn-primary-gradient text-white">Asignar</button>
+                        </div>
+                    </form>
+                `;
+                document.getElementById('licenseModalForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.saveLicenseFromModal();
+                });
+                document.getElementById('modal').classList.remove('hidden');
+            },
+
+            async saveLicenseFromModal() {
+                const tenantId = document.getElementById('mlLicenseTenant').value;
+                const plan = document.getElementById('mlLicensePlan').value;
+                const days = parseInt(document.getElementById('mlLicenseDays').value, 10) || 30;
+                if (!tenantId) { alert('Selecciona un tenant.'); return; }
+                const { error } = await supabase.rpc('superadmin_assign_license', {
+                    p_tenant_id: tenantId,
+                    p_plan: plan,
+                    p_duration_days: days,
+                    p_status: 'active'
+                });
+                if (error) { alert('Error asignando licencia: ' + error.message); return; }
+                this.closeModal();
+                await this.loadAllData();
+            },
+
+            async deleteLicense(licenseId) {
+                if (!confirm('¿Eliminar esta licencia?')) return;
+                const { error } = await supabase.from('licenses').delete().eq('id', licenseId);
+                if (error) { alert('Error eliminando licencia: ' + error.message); return; }
+                await this.loadAllData();
+            },
+
+            async deleteTenant(tenantId) {
+                const tenant = this.tenants.find(t => t.id === tenantId);
+                const name = tenant?.name || tenantId;
+                if (!confirm(`¿Eliminar tenant "${name}"?\n\nEsto eliminará el tenant y todos sus datos asociados. Esta acción no se puede deshacer.`)) return;
+                const { error } = await supabase.rpc('superadmin_delete_tenant', { p_tenant_id: tenantId });
+                if (error) { alert('Error eliminando tenant: ' + error.message); return; }
+                await this.loadAllData();
+            },
+
+            openTenantModal(tenantId = '') {
+                const tenant = this.tenants.find(t => t.id === tenantId) || null;
+                const isNew = !tenant;
+                document.getElementById('modalTitle').textContent = tenant ? 'Editar Tenant' : 'Nuevo Tenant';
+                document.getElementById('modalContent').innerHTML = `
+                    <form id="tenantModalForm" class="space-y-4">
+                        <div><label class="block text-sm font-medium mb-1">Nombre del negocio</label><input id="tenantName" value="${tenant?.name || ''}" type="text" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0" placeholder="Ej: Tienda Malabo"></div>
+                        <div><label class="block text-sm font-medium mb-1">Email Admin</label><input id="tenantEmail" value="${tenant?.business_name || ''}" type="email" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0" placeholder="admin@negocio.com"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium mb-1">Plan</label>
+                                <select id="tenantPlan" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                    <option value="lite" ${tenant?.plan === 'lite' ? 'selected' : ''}>Lite</option>
+                                    <option value="pro" ${tenant?.plan === 'pro' ? 'selected' : ''}>Pro</option>
+                                    <option value="enterprise" ${tenant?.plan === 'enterprise' ? 'selected' : ''}>Enterprise</option>
+                                </select>
+                            </div>
+                            <div><label class="block text-sm font-medium mb-1">Estado</label>
+                                <select id="tenantStatus" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                    <option value="active" ${tenant?.status === 'active' ? 'selected' : ''}>active</option>
+                                    <option value="pending" ${tenant?.status === 'pending' ? 'selected' : ''}>pending</option>
+                                    <option value="inactive" ${tenant?.status === 'inactive' ? 'selected' : ''}>inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" onclick="app.closeModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                            <button type="submit" class="px-4 py-2 rounded-xl btn-primary-gradient text-white">Guardar</button>
+                        </div>
+                    </form>
+                `;
+                document.getElementById('tenantModalForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.saveTenant(tenantId);
+                });
+                document.getElementById('modal').classList.remove('hidden');
+            },
+
+            async saveTenant(tenantId) {
+                const name = document.getElementById('tenantName').value.trim();
+                const email = document.getElementById('tenantEmail').value.trim();
+                const plan = document.getElementById('tenantPlan').value;
+                const status = document.getElementById('tenantStatus').value;
+                if (!name) { alert('El nombre del negocio es obligatorio.'); return; }
+
+                if (tenantId) {
+                    const { error } = await supabase.rpc('superadmin_update_tenant', {
+                        p_tenant_id: tenantId,
+                        p_name: name,
+                        p_business_name: name,
+                        p_plan: plan,
+                        p_status: status
+                    });
+                    if (error) { alert('Error actualizando tenant: ' + error.message); return; }
+                } else {
+                    if (!email) { alert('El email admin es obligatorio para crear un tenant.'); return; }
+
+                    // Step 1: Check if user already exists (avoids rate-limiting signUp calls)
+                    let adminUserId = null;
+                    const { data: existing, error: findErr } = await supabase.rpc('get_auth_user_by_email', { p_email: email });
+                    if (!findErr && existing?.length) {
+                        const ex = Array.isArray(existing) ? existing[0] : existing;
+                        adminUserId = ex?.id || ex?.user_id;
+                    }
+
+                    if (!adminUserId) {
+                        // User does not exist: create via signUp
+                        const password = prompt('Contraseña temporal para el admin del nuevo tenant:');
+                        if (!password || password.length < 6) { alert('Contraseña mínimo 6 caracteres.'); return; }
+
+                        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+                            email, password, options: { data: { name } }
+                        });
+                        if (signUpErr && !signUpErr.message.includes('already registered')) {
+                            alert('Error creando usuario: ' + signUpErr.message); return;
+                        }
+                        adminUserId = signUpData?.user?.id;
+                        if (!adminUserId && signUpErr?.message.includes('already registered')) {
+                            // Race condition: user was created between check and signUp
+                            const { data: existing2 } = await supabase.rpc('get_auth_user_by_email', { p_email: email });
+                            if (existing2?.length) {
+                                const ex2 = Array.isArray(existing2) ? existing2[0] : existing2;
+                                adminUserId = ex2?.id || ex2?.user_id;
+                            }
+                        }
+                        if (!adminUserId) { alert('No se pudo obtener ID del usuario.'); return; }
+                    }
+
+                    // Step 2: Create tenant linking the existing admin user
+                    const { data, error } = await supabase.rpc('superadmin_create_tenant_v2', {
+                        p_business_name: name,
+                        p_admin_user_id: adminUserId,
+                        p_plan: plan
+                    });
+                    if (error) { alert('Error creando tenant: ' + error.message); return; }
+                }
+                this.closeModal();
+                await this.loadAllData();
+            },
+
+            openEditUserModal(userId) {
+                const user = this.users.find(u => u.id === userId);
+                if (!user) { alert('Usuario no encontrado.'); return; }
+                document.getElementById('modalTitle').textContent = 'Editar Usuario';
+                document.getElementById('modalContent').innerHTML = `
+                    <form id="editUserForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Email</label>
+                            <input type="text" value="${user.email || ''}" readonly class="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0 text-gray-400 cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Nombre completo</label>
+                            <input id="euName" type="text" value="${user.name || ''}" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Tenant</label>
+                                <select id="euTenant" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                    ${this.tenants.map(t => `<option value="${t.id}" ${t.id === user.tenant_id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Rol</label>
+                                <select id="euRole" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">
+                                    <option value="seller" ${user.role === 'seller' ? 'selected' : ''}>seller</option>
+                                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                                    <option value="manager" ${user.role === 'manager' ? 'selected' : ''}>manager</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" onclick="app.closeModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                            <button type="submit" class="px-4 py-2 rounded-xl btn-primary-gradient text-white">Guardar cambios</button>
+                        </div>
+                    </form>
+                `;
+                document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.saveEditUser(userId);
+                });
+                document.getElementById('modal').classList.remove('hidden');
+            },
+
+            async saveEditUser(userId) {
+                const name = document.getElementById('euName').value.trim();
+                const tenantId = document.getElementById('euTenant').value;
+                const role = document.getElementById('euRole').value;
+                if (!name) { alert('El nombre no puede estar vacío.'); return; }
+                const { error } = await supabase.from('tenant_users').update({
+                    tenant_id: tenantId,
+                    role,
+                    updated_at: new Date().toISOString()
+                }).eq('user_id', userId);
+                if (error) { alert('Error actualizando usuario: ' + error.message); return; }
+                // Update name in auth user metadata via RPC
+                const { error: nameErr } = await supabase.rpc('update_tenant_user_name', { p_user_id: userId, p_name: name });
+                if (nameErr) console.warn('Error updating user name:', nameErr.message);
+                this.closeModal();
+                await this.loadAllData();
+            },
+
+            async deleteUser(userId) {
+                const user = this.users.find(u => u.id === userId);
+                const label = user ? `${user.name || user.email}` : userId;
+                if (!confirm(`¿Eliminar usuario "${label}" del tenant?\n\nSe eliminará su vínculo con el tenant. Su cuenta de auth permanece.`)) return;
+                const { error } = await supabase.rpc('superadmin_delete_user', { p_user_id: userId });
+                if (error) { alert('Error eliminando usuario: ' + error.message); return; }
+                await this.loadAllData();
+            },
+
+            openUserModal() {
+                document.getElementById('modalTitle').textContent = 'Nuevo Usuario';
+                document.getElementById('modalContent').innerHTML = `
+                    <form id="userModalForm" class="space-y-4">
+                        <div><label class="block text-sm font-medium mb-1">Nombre completo</label><input id="newUserName" type="text" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0"></div>
+                        <div><label class="block text-sm font-medium mb-1">Email</label><input id="newUserEmail" type="email" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium mb-1">Contraseña</label><input id="newUserPassword" type="password" minlength="6" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0" placeholder="Min. 6 caracteres"></div>
+                            <div><label class="block text-sm font-medium mb-1">Confirmar</label><input id="newUserPasswordConfirm" type="password" minlength="6" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0" placeholder="Repite"></div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" id="toggleUserPasswordBtn" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm hover:bg-gray-200 dark:hover:bg-gray-600"><i class="fas fa-eye mr-2"></i>Mostrar</button>
+                            <button type="button" id="generateUserPasswordBtn" class="px-3 py-2 rounded-lg bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 text-sm hover:bg-primary-100 dark:hover:bg-primary-900/50"><i class="fas fa-wand-magic-sparkles mr-2"></i>Generar</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium mb-1">Tenant</label><select id="newUserTenant" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0">${this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}</select></div>
+                            <div><label class="block text-sm font-medium mb-1">Rol</label><select id="newUserRole" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 border-0"><option value="seller">seller</option><option value="admin">admin</option><option value="manager">manager</option></select></div>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" onclick="app.closeModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                            <button type="submit" class="px-4 py-2 rounded-xl btn-primary-gradient text-white">Guardar</button>
+                        </div>
+                    </form>
+                `;
+                document.getElementById('userModalForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.saveUser();
+                });
+                this.setupPasswordTools();
+                document.getElementById('modal').classList.remove('hidden');
+            },
+
+            async saveUser() {
+                const name = document.getElementById('newUserName').value.trim();
+                const email = document.getElementById('newUserEmail').value.trim();
+                const password = document.getElementById('newUserPassword').value;
+                const passwordConfirm = document.getElementById('newUserPasswordConfirm').value;
+                const tenantId = document.getElementById('newUserTenant').value;
+                const role = document.getElementById('newUserRole').value;
+
+                if (!name || !email || !tenantId || !password || !passwordConfirm) {
+                    alert('Completa todos los campos del usuario.'); return;
+                }
+                if (password.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+                if (password !== passwordConfirm) { alert('Las contraseñas no coinciden.'); return; }
+
+                // Step 1: Create auth user via Supabase Auth (guarantees valid bcrypt hash)
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: { data: { name: name } }
+                });
+                if (signUpError && !signUpError.message.includes('already registered')) {
+                    alert('Error creando usuario: ' + signUpError.message); return;
+                }
+                const userId = signUpData?.user?.id;
+                if (!userId) {
+                    // Try to find existing user
+                    const { data: existing, error: findErr } = await supabase.rpc('get_auth_user_by_email', { p_email: email });
+                    if (findErr || !existing?.length) {
+                        alert('No se pudo crear o encontrar el usuario.'); return;
+                    }
+                    const existingUser = Array.isArray(existing) ? existing[0] : existing;
+                    const existingId = existingUser?.id || existingUser?.user_id;
+                    if (!existingId) { alert('No se pudo obtener ID del usuario.'); return; }
+                    await supabase.rpc('link_user_to_tenant', {
+                        p_user_id: existingId,
+                        p_tenant_id: tenantId,
+                        p_role: role,
+                        p_metadata: JSON.stringify({ name })
+                    });
+                } else {
+                    // New user created, link to tenant
+                    const { error: linkErr } = await supabase.rpc('link_user_to_tenant', {
+                        p_user_id: userId,
+                        p_tenant_id: tenantId,
+                        p_role: role,
+                        p_metadata: JSON.stringify({ name })
+                    });
+                    if (linkErr) { alert('Usuario creado pero error vinculando a tenant: ' + linkErr.message); return; }
+                }
+
+                this.closeModal();
+                await this.loadAllData();
+            },
+
+            generateSecurePassword(length = 14) {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*?';
+                const bytes = new Uint32Array(length);
+                window.crypto.getRandomValues(bytes);
+                let password = '';
+                for (let i = 0; i < length; i++) password += chars[bytes[i] % chars.length];
+                return password;
+            },
+
+            setupPasswordTools() {
+                const passInput = document.getElementById('newUserPassword');
+                const confirmInput = document.getElementById('newUserPasswordConfirm');
+                const toggleBtn = document.getElementById('toggleUserPasswordBtn');
+                const generateBtn = document.getElementById('generateUserPasswordBtn');
+                if (!passInput || !confirmInput || !toggleBtn || !generateBtn) return;
+                toggleBtn.addEventListener('click', () => {
+                    const show = passInput.type === 'password';
+                    passInput.type = show ? 'text' : 'password';
+                    confirmInput.type = show ? 'text' : 'password';
+                    toggleBtn.innerHTML = show ? '<i class="fas fa-eye-slash mr-2"></i>Ocultar' : '<i class="fas fa-eye mr-2"></i>Mostrar';
+                });
+                generateBtn.addEventListener('click', () => {
+                    const generated = this.generateSecurePassword();
+                    passInput.value = generated;
+                    confirmInput.value = generated;
+                    passInput.type = 'text';
+                    confirmInput.type = 'text';
+                    toggleBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Ocultar';
+                });
+            },
+
+            closeModal() {
+                document.getElementById('modal').classList.add('hidden');
+            },
+
+            clearCache() {
+                const keysToKeep = ['sb_url', 'sb_anon_key', 'rw_offline_tenant', 'rw_offline_session'];
+                Object.keys(localStorage).forEach(key => {
+                    if (!keysToKeep.includes(key)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                alert('Caché local limpiado (se mantuvieron credenciales). Recarga la página.');
+            },
+
+            toggle2FA() {
+                if (!this.currentUser?.email) { alert('No hay sesión activa.'); return; }
+                const email = this.currentUser.email;
+                if (!window.RWSecurity) { alert('Módulo de seguridad no disponible.'); return; }
+                if (window.RWSecurity.is2FAEnabled(email)) {
+                    if (confirm('¿Desactivar 2FA para ' + email + '?')) {
+                        window.RWSecurity.disable2FA(email);
+                        document.getElementById('label2FA').textContent = '2FA desactivado';
+                        document.getElementById('icon2FA').className = 'fas fa-shield-alt text-gray-400';
+                        alert('2FA desactivado correctamente.');
+                    }
+                } else {
+                    const secret = window.RWSecurity.generateTOTPSecret();
+                    const uri = window.RWSecurity.generateTOTPUri(secret, email);
+                    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(uri);
+                    if (confirm('¿Activar 2FA?\n\n1. Abre tu app autenticadora (Google Authenticator, Authy, etc.)\n2. Escanea este código QR (se abrirá en otra ventana)\n3. O ingresa manualmente: ' + secret + '\n\n¿Continuar?')) {
+                        window.open(qrUrl, '_blank', 'width=300,height=300');
+                        const code = prompt('Una vez escaneado, ingresa el código de 6 dígitos para verificar:');
+                        if (code && /^\d{6}$/.test(code)) {
+                            window.RWSecurity.verifyTOTP(code, secret).then(valid => {
+                                if (valid) {
+                                    window.RWSecurity.enable2FA(email, secret);
+                                    document.getElementById('label2FA').textContent = '2FA activo';
+                                    document.getElementById('icon2FA').className = 'fas fa-shield-alt text-emerald-500';
+                                    alert('2FA activado correctamente.');
+                                } else {
+                                    alert('Código incorrecto. Intenta de nuevo.');
+                                }
+                            });
+                        }
+                    }
+                }
+            },
+
+            initCharts() {
+                const ctx = document.getElementById('plansChart');
+                if (!ctx) return;
+                const enterprise = this.tenants.filter(t => t.plan === 'enterprise').length;
+                const pro = this.tenants.filter(t => t.plan === 'pro').length;
+                const lite = this.tenants.filter(t => t.plan === 'lite' || !t.plan).length;
+                if (this.chart) this.chart.destroy();
+                this.chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Enterprise', 'Pro', 'Lite'],
+                        datasets: [{ data: [enterprise, pro, lite], backgroundColor: ['#9333ea', '#2563eb', '#6b7280'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+                });
+            }
+        };
+
+        window.app = app;
+        app.init();
+    })();
+    </script>
+</body>
+</html>

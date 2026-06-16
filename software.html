@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://*.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'self' https://www.google.com; manifest-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#0284c7">
+    <script>
+        if (location.protocol === 'http:' || location.protocol === 'https:') {
+            document.write('<link rel="manifest" href="manifest.webmanifest">');
+        }
+    </script>
+    <link rel="icon" type="image/png" href="logo-river.png">
+    <title>RIVER-WALL ERP V.5.0-SYSCOHADA</title>
+    <script src="modules/security-utils.js"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preload" as="image" href="logo-river.png" fetchpriority="high">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           REFACTOR ENTERPRISE UI — Design Tokens & Global Overrides
+           ═══════════════════════════════════════════════════════════ */
+        :root {
+            --rw-primary: #0284c7;
+            --rw-primary-hover: #0369a1;
+            --rw-surface: #f8fafc;
+            --rw-card: #ffffff;
+            --rw-border: #e2e8f0;
+            --rw-divider: 1px solid #f1f5f9;
+            --rw-text-primary: #0f172a;
+            --rw-text-secondary: #64748b;
+            --rw-success: #10b981;
+            --rw-warning: #f59e0b;
+            --rw-danger: #ef4444;
+            --rw-sidebar-width: 260px;
+            --rw-sidebar-collapsed: 72px;
+            --rw-pos-ticket-width: 400px;
+            --rw-pos-cat-width: 200px;
+            --rw-radius-card: 16px;
+            --rw-radius-btn: 12px;
+            --rw-shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+            --rw-shadow-modal: 0 20px 25px -5px rgba(0,0,0,0.08);
+            --rw-shadow-primary: 0 4px 12px rgba(2,132,199,0.25);
+            --rw-font-ui: 'Inter', sans-serif;
+            --rw-font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: var(--rw-font-ui);
+            color: var(--rw-text-primary);
+            background: var(--rw-surface);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ─── Sidebar Enterprise ─── */
+        .enterprise-sidebar {
+            width: var(--rw-sidebar-width);
+            background: var(--rw-card);
+            border-right: 1px solid var(--rw-border);
+        }
+        .sidebar-block {
+            margin-bottom: 8px;
+        }
+        .sidebar-block-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--rw-text-secondary);
+        }
+        .sidebar-block-a {
+            background: rgba(241,245,249,0.6);
+            border-radius: 12px;
+            margin: 0 8px 8px;
+            padding: 4px;
+        }
+        .sidebar-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--rw-text-secondary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            transition: all 150ms ease;
+            position: relative;
+        }
+        .sidebar-nav-item:hover {
+            background: #f8fafc;
+            color: var(--rw-text-primary);
+        }
+        .sidebar-nav-item.is-active {
+            background: #f0f9ff;
+            color: #0369a1;
+            border-left: 3px solid var(--rw-primary);
+            font-weight: 600;
+        }
+        .sidebar-nav-item .nav-icon {
+            width: 18px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .sidebar-nav-item.is-active .nav-icon {
+            color: var(--rw-primary);
+        }
+        .sidebar-nav-item .nav-label {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-nav-item .nav-chevron {
+            font-size: 10px;
+            color: #94a3b8;
+            transition: transform 200ms ease;
+        }
+        .sidebar-nav-item.is-open .nav-chevron {
+            transform: rotate(180deg);
+        }
+        .sidebar-children {
+            padding-left: 12px;
+            margin: 2px 0;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 250ms ease;
+        }
+        .sidebar-children.is-expanded {
+            max-height: 600px;
+        }
+        .sidebar-child-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 8px 12px 8px 28px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            transition: all 150ms ease;
+        }
+        .sidebar-child-item:hover {
+            background: #f8fafc;
+            color: var(--rw-text-primary);
+        }
+        .sidebar-child-item.is-active {
+            background: #f0f9ff;
+            color: #0369a1;
+            font-weight: 600;
+        }
+        .sidebar-pro-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 6px;
+            background: #fef3c7;
+            color: #b45309;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+        .sidebar-footer {
+            border-top: 1px solid var(--rw-border);
+            padding: 12px 16px;
+        }
+        .sidebar-footer .footer-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* ─── POS 3-Column Layout ─── */
+        .pos-layout {
+            display: flex;
+            gap: 16px;
+            height: calc(100dvh - 64px);
+            padding: 16px;
+            background: var(--rw-surface);
+        }
+        .pos-col-categories {
+            width: var(--rw-pos-cat-width);
+            flex-shrink: 0;
+            background: var(--rw-card);
+            border-radius: var(--rw-radius-card);
+            border: 1px solid #f1f5f9;
+            box-shadow: var(--rw-shadow-card);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .pos-col-products {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .pos-col-ticket {
+            width: var(--rw-pos-ticket-width);
+            flex-shrink: 0;
+            background: var(--rw-card);
+            border-radius: var(--rw-radius-card);
+            border: 1px solid #f1f5f9;
+            box-shadow: var(--rw-shadow-card);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .pos-search-wrap {
+            position: relative;
+            margin-bottom: 12px;
+        }
+        .pos-search-wrap input {
+            width: 100%;
+            height: 44px;
+            padding: 0 16px 0 44px;
+            border-radius: 12px;
+            border: 1px solid var(--rw-border);
+            background: white;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 150ms, box-shadow 150ms;
+        }
+        .pos-search-wrap input:focus {
+            border-color: var(--rw-primary);
+            box-shadow: 0 0 0 3px rgba(2,132,199,0.1);
+        }
+        .pos-search-wrap .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .pos-cat-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 8px;
+        }
+        .pos-cat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--rw-text-secondary);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            transition: all 150ms;
+        }
+        .pos-cat-item:hover { background: #f8fafc; }
+        .pos-cat-item.is-active {
+            background: #f0f9ff;
+            color: var(--rw-primary);
+            border-left: 2px solid var(--rw-primary);
+        }
+        .pos-cat-item .cat-icon { font-size: 14px; width: 18px; text-align: center; }
+        .pos-product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .pos-product-card {
+            background: var(--rw-card);
+            border-radius: 12px;
+            border: 1px solid #f1f5f9;
+            box-shadow: var(--rw-shadow-card);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 150ms, box-shadow 150ms;
+            position: relative;
+        }
+        .pos-product-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        .pos-product-card .card-img {
+            aspect-ratio: 1/1;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            position: relative;
+        }
+        .pos-product-card .card-img img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .pos-product-card .stock-dot {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--rw-danger);
+        }
+        .pos-product-card .card-body {
+            padding: 10px 12px 12px;
+        }
+        .pos-product-card .card-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--rw-text-primary);
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 36px;
+            margin-bottom: 6px;
+        }
+        .pos-product-card .card-price {
+            font-family: var(--rw-font-mono);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--rw-primary);
+        }
+        .pos-ticket-header {
+            height: 48px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #f1f5f9;
+            background: white;
+        }
+        .pos-ticket-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+        }
+        .pos-ticket-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            min-height: 56px;
+            border-radius: 8px;
+            transition: background 150ms;
+        }
+        .pos-ticket-item:hover { background: #f8fafc; }
+        .pos-ticket-item .item-thumb {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f1f5f9;
+            flex-shrink: 0;
+        }
+        .pos-ticket-item .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .pos-ticket-item .item-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--rw-text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pos-ticket-item .item-qty {
+            width: 40px;
+            text-align: center;
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid var(--rw-border);
+            background: #f8fafc;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: var(--rw-font-mono);
+        }
+        .pos-ticket-item .item-price {
+            font-size: 13px;
+            font-weight: 600;
+            font-family: var(--rw-font-mono);
+            color: var(--rw-text-primary);
+            text-align: right;
+            min-width: 70px;
+        }
+        .pos-ticket-item .item-remove {
+            opacity: 0;
+            color: #cbd5e1;
+            cursor: pointer;
+            padding: 4px;
+            transition: all 150ms;
+        }
+        .pos-ticket-item:hover .item-remove {
+            opacity: 1;
+            color: var(--rw-danger);
+        }
+        .pos-ticket-totals {
+            background: #f8fafc;
+            padding: 16px;
+            border-top: 2px solid #e2e8f0;
+        }
+        .pos-ticket-totals .totals-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--rw-text-secondary);
+            margin-bottom: 6px;
+        }
+        .pos-ticket-totals .totals-row.total {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--rw-text-primary);
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--rw-border);
+        }
+        .pos-ticket-totals .totals-row.total .total-value {
+            font-family: var(--rw-font-mono);
+            color: var(--rw-primary);
+        }
+        .pos-checkout-btn {
+            width: 100%;
+            height: 56px;
+            border-radius: var(--rw-radius-btn);
+            background: linear-gradient(90deg, var(--rw-primary), #1d4ed8);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--rw-shadow-primary);
+            transition: all 150ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .pos-checkout-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(2,132,199,0.35);
+        }
+        .pos-checkout-btn:disabled {
+            background: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .pos-bottom-toolbar {
+            display: none;
+        }
+
+        /* ─── Inventory Sub-Nav ─── */
+        .inventory-layout {
+            display: flex;
+            gap: 16px;
+            height: 100%;
+        }
+        .inventory-subnav {
+            width: 220px;
+            flex-shrink: 0;
+            background: var(--rw-card);
+            border-radius: var(--rw-radius-card);
+            border: 1px solid #f1f5f9;
+            box-shadow: var(--rw-shadow-card);
+            padding: 8px;
+            overflow-y: auto;
+        }
+        .inventory-subnav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 40px;
+            padding: 0 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--rw-text-secondary);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            transition: all 150ms;
+            margin-bottom: 2px;
+        }
+        .inventory-subnav-item:hover { background: #f8fafc; }
+        .inventory-subnav-item.is-active {
+            background: white;
+            color: var(--rw-primary);
+            border-left: 2px solid var(--rw-primary);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            font-weight: 600;
+        }
+        .inventory-subnav-item .subnav-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--rw-text-secondary);
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .inventory-content {
+            flex: 1;
+            min-width: 0;
+            overflow-y: auto;
+        }
+
+        /* ─── Dashboard KPIs ─── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .kpi-card {
+            background: var(--rw-card);
+            border-radius: var(--rw-radius-card);
+            border: 1px solid #f1f5f9;
+            box-shadow: var(--rw-shadow-card);
+            padding: 20px;
+            transition: box-shadow 150ms;
+        }
+        .kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .kpi-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .kpi-icon.emerald { background: #ecfdf5; color: #059669; }
+        .kpi-icon.sky { background: #f0f9ff; color: #0284c7; }
+        .kpi-icon.amber { background: #fffbeb; color: #d97706; }
+        .kpi-icon.purple { background: #f5f3ff; color: #7c3aed; }
+        .kpi-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--rw-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .kpi-value {
+            font-family: var(--rw-font-mono);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--rw-text-primary);
+            line-height: 1;
+        }
+        .kpi-trend {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+        .kpi-trend.up { color: var(--rw-success); }
+        .kpi-trend.down { color: var(--rw-danger); }
+
+        /* ─── Enterprise Table ─── */
+        .rw-table-enterprise {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .rw-table-enterprise thead th {
+            height: 48px;
+            padding: 0 16px;
+            background: #f8fafc;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--rw-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            border-bottom: 1px solid var(--rw-border);
+            white-space: nowrap;
+        }
+        .rw-table-enterprise tbody td {
+            height: 64px;
+            padding: 0 16px;
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        .rw-table-enterprise tbody tr:hover td {
+            background: #f8fafc;
+        }
+        .rw-table-enterprise .td-product {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .rw-table-enterprise .td-thumb {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f1f5f9;
+            flex-shrink: 0;
+        }
+        .rw-table-enterprise .td-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--rw-text-primary);
+        }
+        .rw-table-enterprise .td-sku {
+            font-size: 12px;
+            color: var(--rw-text-secondary);
+        }
+        .rw-table-enterprise .td-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .rw-table-enterprise .td-actions button {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 150ms;
+        }
+        .rw-table-enterprise .td-actions button:hover {
+            background: #f1f5f9;
+            color: var(--rw-text-primary);
+        }
+
+        /* ─── Status Badges ─── */
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-pill.emerald { background: #d1fae5; color: #065f46; }
+        .badge-pill.amber { background: #fef3c7; color: #92400e; }
+        .badge-pill.red { background: #fee2e2; color: #991b1b; }
+        .badge-pill.sky { background: #e0f2fe; color: #075985; }
+
+        /* ─── Stock Bar ─── */
+        .stock-bar {
+            width: 60px;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .stock-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+        .stock-bar-fill.ok { background: var(--rw-success); }
+        .stock-bar-fill.low { background: var(--rw-warning); }
+        .stock-bar-fill.out { background: var(--rw-danger); }
+
+        /* ─── Empty State ─── */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            text-align: center;
+        }
+        .empty-state svg {
+            width: 160px;
+            height: 160px;
+            margin-bottom: 24px;
+            color: #cbd5e1;
+        }
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            font-size: 14px;
+            color: var(--rw-text-secondary);
+            max-width: 280px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        /* ─── Modals ─── */
+        .modal-enterprise .modal-panel {
+            max-width: 32rem; /* max-w-lg default */
+            border-radius: var(--rw-radius-card);
+            box-shadow: var(--rw-shadow-modal);
+            background: var(--rw-card);
+            border: 1px solid #f1f5f9;
+            overflow: hidden;
+        }
+        .modal-enterprise.modal-lg .modal-panel { max-width: 42rem; }
+        .modal-enterprise.modal-xl .modal-panel { max-width: 56rem; }
+        .modal-enterprise .modal-header {
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(8px);
+            padding: 16px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+        .modal-enterprise .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* ─── Toasts ─── */
+        .toast-enterprise {
+            pointer-events: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+            border: 1px solid #f1f5f9;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 360px;
+            animation: toastSlideIn 250ms ease;
+        }
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ─── Skeleton ─── */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: skeletonShimmer 1.4s infinite;
+            border-radius: 6px;
+        }
+        @keyframes skeletonShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ─── Buttons ─── */
+        .btn-primary-enterprise {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: linear-gradient(90deg, var(--rw-primary), #1d4ed8);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--rw-shadow-primary);
+            transition: all 150ms;
+        }
+        .btn-primary-enterprise:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(2,132,199,0.35);
+        }
+        .btn-secondary-enterprise {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: white;
+            color: var(--rw-text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--rw-border);
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .btn-secondary-enterprise:hover { background: #f8fafc; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 1024px) {
+            .enterprise-sidebar {
+                width: var(--rw-sidebar-collapsed);
+            }
+            .sidebar-nav-item .nav-label,
+            .sidebar-nav-item .nav-chevron,
+            .sidebar-block-header,
+            .sidebar-children,
+            .sidebar-footer .footer-info { display: none; }
+            .sidebar-footer { padding: 8px; justify-content: center; }
+            .sidebar-footer .footer-avatar { margin: 0 auto; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .pos-layout { padding: 12px; gap: 12px; }
+            .pos-col-categories { display: none; }
+            .pos-col-products { flex: 1; }
+            .pos-col-ticket { width: 380px; }
+        }
+        @media (max-width: 768px) {
+            .enterprise-sidebar {
+                width: 280px;
+                transform: translateX(-100%);
+            }
+            .enterprise-sidebar.is-open {
+                transform: translateX(0);
+            }
+            .sidebar-nav-item .nav-label,
+            .sidebar-nav-item .nav-chevron,
+            .sidebar-block-header,
+            .sidebar-children,
+            .sidebar-footer .footer-info { display: block; }
+            .sidebar-footer { padding: 12px 16px; }
+            .kpi-grid { grid-template-columns: 1fr; }
+            .pos-layout {
+                flex-direction: column;
+                height: auto;
+                padding: 12px;
+            }
+            .pos-col-categories,
+            .pos-col-ticket {
+                width: 100%;
+                max-height: 50vh;
+            }
+            .pos-col-products {
+                min-height: 40vh;
+            }
+            .pos-bottom-toolbar {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 64px;
+                background: white;
+                border-top: 1px solid var(--rw-border);
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+                z-index: 40;
+                align-items: center;
+                justify-content: space-around;
+                padding: 0 16px;
+            }
+            .inventory-layout {
+                flex-direction: column;
+            }
+            .inventory-subnav {
+                width: 100%;
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding: 8px;
+            }
+            .inventory-subnav-item {
+                white-space: nowrap;
+                width: auto;
+                margin-bottom: 0;
+            }
+            .rw-table-enterprise .td-actions button { opacity: 1; }
+        }
+
+        /* ─── Dark mode compatibility ─── */
+        .dark .enterprise-sidebar,
+        .dark .pos-col-categories,
+        .dark .pos-col-ticket,
+        .dark .inventory-subnav,
+        .dark .kpi-card,
+        .dark .pos-product-card,
+        .dark .modal-enterprise .modal-panel,
+        .dark .toast-enterprise {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        .dark .pos-ticket-totals,
+        .dark .pos-ticket-header {
+            background: #0f172a;
+            border-color: #334155;
+        }
+        .dark .rw-table-enterprise tbody td {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+        .dark .rw-table-enterprise thead th {
+            background: #0f172a;
+            color: #94a3b8;
+        }
+        .dark .pos-search-wrap input {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+        .dark .sidebar-nav-item:hover,
+        .dark .sidebar-child-item:hover,
+        .dark .pos-cat-item:hover { background: #334155; }
+
+        /* ═══════════════════════════════════════
+           POS TICKET — 3 ZONAS FIJAS (CORREGIDO)
+           ═══════════════════════════════════════ */
+        .pos-ticket-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: 400px;
+            min-width: 400px;
+            max-width: 400px;
+            height: 100%;
+            max-height: calc(100dvh - 80px);
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        /* ZONA 1: Header — ultra compacto */
+        .pos-ticket-header {
+            flex-shrink: 0;
+            padding: 8px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            background: white;
+        }
+        .pos-ticket-header .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .pos-ticket-header .header-row:last-child {
+            margin-bottom: 0;
+        }
+        .pos-ticket-header .ticket-num {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .pos-ticket-header .action-bar {
+            display: flex;
+            gap: 3px;
+        }
+        .pos-ticket-header .action-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: none;
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: all 120ms;
+            padding: 0;
+        }
+        .pos-ticket-header .action-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .pos-ticket-header .client-bar {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .pos-ticket-header .client-select {
+            flex: 1;
+            height: 28px;
+            padding: 0 8px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 11px;
+            color: #0f172a;
+            outline: none;
+        }
+        .pos-ticket-header .client-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: #0284c7;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
+        .pos-ticket-header .notes-area {
+            width: 100%;
+            height: 28px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 11px;
+            color: #0f172a;
+            resize: none;
+            margin-top: 4px;
+            outline: none;
+            display: none;
+        }
+
+        /* ZONA 2: Carrito — scrollable, flexible */
+        .pos-ticket-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 10px;
+            min-height: 0;
+            background: white;
+        }
+        .pos-ticket-items .cart-item {
+            padding: 6px;
+            border-radius: 8px;
+            background: #f8fafc;
+            margin-bottom: 4px;
+            border: 1px solid #f1f5f9;
+        }
+
+        /* ZONA 3: Terminal — compacto, auto-height */
+        .pos-ticket-terminal {
+            flex-shrink: 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            border-radius: 0 0 16px 16px;
+            color: white;
+        }
+        .pos-ticket-terminal .totals-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 2px;
+        }
+        .pos-ticket-terminal .totals-row.total {
+            font-size: 16px;
+            font-weight: 800;
+            color: white;
+            margin-top: 3px;
+            padding-top: 3px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .pos-ticket-terminal .payment-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 3px;
+            margin: 6px 0;
+        }
+        .pos-ticket-terminal .payment-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            padding: 4px 1px;
+            border-radius: 6px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 9px;
+            transition: all 150ms;
+        }
+        .pos-ticket-terminal .payment-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        .pos-ticket-terminal .payment-btn.active {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.4);
+        }
+        .pos-ticket-terminal .payment-btn i {
+            font-size: 14px;
+        }
+        .pos-ticket-terminal .cash-input {
+            width: 100%;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            text-align: right;
+            margin-bottom: 4px;
+            outline: none;
+        }
+        .pos-ticket-terminal .cash-input::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+        .pos-ticket-terminal .change-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #6ee7b7;
+            margin-bottom: 4px;
+        }
+        .pos-ticket-terminal .discount-row {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 6px;
+        }
+        .pos-ticket-terminal .discount-row button {
+            flex: 1;
+            padding: 3px;
+            border-radius: 5px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .pos-ticket-terminal .discount-row button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .pos-ticket-terminal .checkout-btn {
+            width: 100%;
+            height: 44px;
+            border-radius: 8px;
+            background: white;
+            color: #0284c7;
+            font-weight: 800;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .pos-ticket-terminal .checkout-btn:active {
+            transform: scale(0.98);
+        }
+        .pos-ticket-terminal .checkout-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 1280px) {
+            .pos-ticket-wrapper { width: 360px; min-width: 360px; max-width: 360px; }
+        }
+
+        /* Dark mode overrides */
+        .dark .pos-ticket-wrapper { background: #1e293b; border-color: #334155; }
+        .dark .pos-ticket-header { background: #1e293b; border-color: #334155; }
+        .dark .pos-ticket-header .ticket-num { color: #e2e8f0; }
+        .dark .pos-ticket-header .action-btn { background: #334155; color: #94a3b8; }
+        .dark .pos-ticket-header .action-btn:hover { background: #475569; color: #e2e8f0; }
+        .dark .pos-ticket-header .client-select { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+        .dark .pos-ticket-header .notes-area { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+        .dark .pos-ticket-header .notes-area::placeholder { color: #64748b; }
+        .dark .pos-ticket-items { background: #1e293b; }
+        .dark .pos-ticket-items .cart-item { background: #334155; border-color: #475569; }
+        .dark .pos-ticket-terminal { background: linear-gradient(135deg, #0369a1, #1e3a5f); }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        window.RW_ASSET_SOURCES = Object.freeze({
+            chart: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+            jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+            xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+        });
+
+        window.LibraryLoader = {
+            _pending: {},
+            loadScript(key, src, resolver) {
+                if (resolver()) return Promise.resolve(resolver());
+                if (this._pending[key]) return this._pending[key];
+
+                this._pending[key] = new Promise((resolve, reject) => {
+                    const existing = document.querySelector(`script[data-rw-lib="${key}"]`);
+                    if (existing) {
+                        existing.addEventListener('load', () => resolve(resolver()), { once: true });
+                        existing.addEventListener('error', () => reject(new Error(`No se pudo cargar ${key}`)), { once: true });
+                        return;
+                    }
+
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.async = true;
+                    script.defer = true;
+                    script.dataset.rwLib = key;
+                    script.onload = () => resolve(resolver());
+                    script.onerror = () => reject(new Error(`No se pudo cargar ${key}`));
+                    document.head.appendChild(script);
+                }).finally(() => {
+                    delete this._pending[key];
+                });
+
+                return this._pending[key];
+            },
+            ensureChartJS() {
+                return this.loadScript('chart', window.RW_ASSET_SOURCES.chart, () => window.Chart || null);
+            },
+            ensureJsPDF() {
+                return this.loadScript('jspdf', window.RW_ASSET_SOURCES.jspdf, () => window.jspdf?.jsPDF || null);
+            },
+            ensureXLSX() {
+                return this.loadScript('xlsx', window.RW_ASSET_SOURCES.xlsx, () => window.XLSX || null);
+            },
+            preloadNonCritical() {
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const slowConnection = connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType);
+                const tasks = [this.ensureChartJS()];
+                if (!slowConnection) {
+                    tasks.push(this.ensureJsPDF(), this.ensureXLSX());
+                }
+                return Promise.allSettled(tasks);
+            }
+        };
+
+        window.addEventListener('load', () => {
+            const schedule = window.requestIdleCallback || ((cb) => setTimeout(cb, 1200));
+            schedule(() => {
+                window.LibraryLoader.preloadNonCritical().catch(() => {});
+            });
+        }, { once: true });
+
+        (() => {
+            try {
+                const storedTheme = localStorage.getItem('rw_theme');
+                const initialTheme = storedTheme === 'dark' ? 'dark' : 'light';
+                document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+                document.documentElement.setAttribute('data-theme', initialTheme);
+            } catch (error) {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+
+    </script>
+</head>
+<body class="antialiased bg-white dark:bg-gray-900">
+    <!-- Anti-cache reload detection -->
+    <script>
+        (function() {
+            if (window.performance && window.performance.navigation) {
+                var navType = window.performance.navigation.type;
+                if (navType === 2) {
+                    window.location.reload(true);
+                    return;
+                }
+            }
+            if (window.performance && window.performance.getEntriesByType) {
+                var navEntries = window.performance.getEntriesByType('navigation');
+                if (navEntries.length > 0 && navEntries[0].type === 'back_forward') {
+                    window.location.reload();
+                    return;
+                }
+            }
+            window.__appLoadTime = Date.now();
+        })();
+    </script>
+    
+    <!-- Splash Screen -->
+    <div id="splashScreen" class="fixed inset-0 z-[9999] flex items-center justify-center splash-premium-bg">
+        <div class="splash-orb w-96 h-96 bg-cyan-400/20 top-0 left-0" style="animation-delay: 0s;"></div>
+        <div class="splash-orb w-[32rem] h-[32rem] bg-blue-600/15 bottom-0 right-0" style="animation-delay: -4s;"></div>
+        <div class="splash-orb w-72 h-72 bg-sky-300/20 top-1/3 right-1/4" style="animation-delay: -8s;"></div>
+        
+        <div class="ocean-waves">
+            <div class="wave wave-1"></div>
+            <div class="wave wave-2"></div>
+            <div class="wave wave-3"></div>
+        </div>
+        <div class="bubbles">
+            <div class="bubble bubble-1"></div>
+            <div class="bubble bubble-2"></div>
+            <div class="bubble bubble-3"></div>
+            <div class="bubble bubble-4"></div>
+            <div class="bubble bubble-5"></div>
+            <div class="bubble bubble-6"></div>
+            <div class="bubble bubble-7"></div>
+            <div class="bubble bubble-8"></div>
+        </div>
+        
+        <div class="text-center flex flex-col items-center">
+            <div class="splash-logo-container">
+                <div class="splash-logo-ring"></div>
+                <img src="logo-river.png" alt="River Wall">
+            </div>
+            <h1 class="splash-title">RIVER-WALL</h1>
+            <p class="splash-subtitle">Enterprise Retail OS V.5.0</p>
+            <div class="splash-progress-track">
+                <div id="splashProgress" class="splash-progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="splashStatus" class="splash-status" data-i18n="splash.initializing">Inicializando sistema...</p>
+            <div class="splash-dots" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        
+        <div class="splash-version">V.5.0-SYSCOHADA · D-WALL S.L.</div>
+    </div>
+
+    <!-- Post-Login App Loading Screen with Tips -->
+    <div id="appLoadingScreen" class="app-loading-screen hidden">
+        <div class="ocean-waves app-loading-waves">
+            <div class="wave wave-1"></div>
+            <div class="wave wave-2"></div>
+            <div class="wave wave-3"></div>
+        </div>
+        <div class="bubbles app-loading-bubbles">
+            <div class="bubble bubble-1"></div>
+            <div class="bubble bubble-2"></div>
+            <div class="bubble bubble-3"></div>
+            <div class="bubble bubble-4"></div>
+            <div class="bubble bubble-5"></div>
+            <div class="bubble bubble-6"></div>
+            <div class="bubble bubble-7"></div>
+            <div class="bubble bubble-8"></div>
+        </div>
+        <div class="app-loading-card">
+            <img src="logo-river.png" alt="River Wall" class="app-loading-logo">
+            <div class="app-loading-spinner"></div>
+            <h2 class="app-loading-title" data-i18n="loading.starting">Iniciando RIVER-WALL</h2>
+            <p class="app-loading-subtitle" data-i18n="loading.preparing">Preparando tu espacio de trabajo...</p>
+            
+            <div class="app-tip-container" id="appTipContainer">
+                <img src="" alt="Tip" class="app-tip-image" id="appTipImage">
+                <div class="app-tip-content">
+                    <div class="app-tip-label" data-i18n="loading.tip">💡 Consejo de Productividad</div>
+                    <p class="app-tip-text" id="appTipText" data-i18n="loading.loadingTips">Cargando consejos...</p>
+                </div>
+                <div class="app-tip-progress-container">
+                    <div class="app-tip-progress-bar">
+                        <div class="app-tip-progress-fill" id="appTipProgressFill" style="width: 10%;"></div>
+                    </div>
+                    <div class="app-tip-progress-text" id="appTipProgressText">Tip 1 de 10</div>
+                </div>
+            </div>
+            
+            <div class="app-loading-progress">
+                <div class="app-loading-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="appContainer" class="hidden min-h-screen flex flex-col bg-white dark:bg-gray-900">
+        <header class="glass sticky top-0 z-50 h-16 border-b border-gray-200/50 dark:border-gray-700/50">
+            <div class="h-full px-4 lg:px-6 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button id="sidebarToggle" class="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i class="fas fa-bars text-xl dark:text-white"></i>
+                    </button>
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onclick="ui.navigateTo('dashboard')">
+                        <div class="w-14 h-14 rounded-xl bg-white dark:bg-gray-800 p-1.5 shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                            <img src="logo-river.png" alt="River Wall" class="w-full h-full object-contain">
+                        </div>
+                        <div class="hidden sm:block">
+                            <h1 class="font-bold text-lg dark:text-white">RIVER-WALL</h1>
+                            <p id="tenantName" class="text-xs text-slate-500 dark:text-slate-400">Enterprise POS</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="hidden md:flex flex-1 max-w-xl mx-6">
+                    <div class="relative w-full" id="globalSearchContainer">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="globalSearch" data-i18n-placeholder="header.search" placeholder="Buscar productos, clientes, facturas..." 
+                            autocomplete="off"
+                            class="w-full pl-11 pr-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 border-0 focus:ring-2 focus:ring-primary-600 dark:text-white"
+                            oninput="ui.handleGlobalSearch(this.value)" onkeydown="ui.handleGlobalSearchKey(event)">
+                        <div id="globalSearchResults" class="hidden absolute left-0 right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-2xl elevation-3 border border-gray-200 dark:border-gray-700 py-2 z-50 max-h-96 overflow-y-auto"></div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="themeToggleBtn" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i class="fas fa-sun text-xl dark:hidden text-amber-500"></i>
+                        <i class="fas fa-moon text-xl hidden dark:block text-blue-400"></i>
+                    </button>
+                    <div class="relative">
+                        <button id="langMenuBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-slate-600 dark:text-slate-300 text-sm font-semibold" onclick="document.getElementById('langDropdown').classList.toggle('hidden')">
+                            <i class="fas fa-language"></i>
+                            <span id="langLabel">ES</span>
+                            <i class="fas fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div id="langDropdown" class="hidden absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-2xl elevation-3 border border-gray-200 dark:border-gray-700 py-2 z-50 min-w-[140px]">
+                            <button class="rw-lang-btn font-bold text-primary-600 w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm" data-lang="es" onclick="I18n.setLang('es'); document.getElementById('langLabel').textContent='ES'; document.getElementById('langDropdown').classList.add('hidden')">🇪🇸 <span data-i18n="lang.es">Español</span></button>
+                            <button class="rw-lang-btn text-gray-500 w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm" data-lang="en" onclick="I18n.setLang('en'); document.getElementById('langLabel').textContent='EN'; document.getElementById('langDropdown').classList.add('hidden')">🇬🇧 <span data-i18n="lang.en">English</span></button>
+                            <button class="rw-lang-btn text-gray-500 w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm" data-lang="fr" onclick="I18n.setLang('fr'); document.getElementById('langLabel').textContent='FR'; document.getElementById('langDropdown').classList.add('hidden')">🇫🇷 <span data-i18n="lang.fr">Français</span></button>
+                            <button class="rw-lang-btn text-gray-500 w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm" data-lang="pt" onclick="I18n.setLang('pt'); document.getElementById('langLabel').textContent='PT'; document.getElementById('langDropdown').classList.add('hidden')">🇧🇷 <span data-i18n="lang.pt">Português</span></button>
+                        </div>
+                    </div>
+                    <div class="relative" id="localSelectorContainer">
+                        <button id="localMenuBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-slate-600 dark:text-slate-300 text-sm font-semibold" onclick="document.getElementById('localDropdown').classList.toggle('hidden')">
+                            <i class="fas fa-store"></i>
+                            <span id="localLabel" class="max-w-[100px] truncate">--</span>
+                            <i class="fas fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div id="localDropdown" class="hidden absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-2xl elevation-3 border border-gray-200 dark:border-gray-700 py-2 z-50 min-w-[180px]">
+                            <div id="localDropdownItems" class="max-h-60 overflow-y-auto"></div>
+                            <div class="border-t dark:border-gray-700 mt-1 pt-1">
+                                <button onclick="document.getElementById('localDropdown').classList.add('hidden'); ui.navigateTo('locales')" class="w-full text-left px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                    <i class="fas fa-cog w-4"></i><span data-i18n="local.manage">Gestionar Locales</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="headerLicenseBtn" class="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800" onclick="ui.showLicenseDetails()" title="Licencia">
+                        <i class="fas fa-shield-alt text-xl dark:text-white"></i>
+                        <span id="headerLicenseDot" class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white dark:border-gray-900"></span>
+                    </button>
+                    <div id="syncStatus" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-sm">
+                        <span id="syncDot" class="w-2 h-2 rounded-full status-online"></span>
+                        <span id="syncText" class="text-gray-600 dark:text-slate-400" data-i18n="header.online">Online</span>
+                    </div>
+                    <button id="notifBtn" class="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800" onclick="ui.showNotifications()">
+                        <i class="fas fa-bell text-xl dark:text-white"></i>
+                        <span id="notifBadge" class="notification-badge hidden">0</span>
+                    </button>
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center gap-3 p-1.5 pr-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                                <span id="userInitials">--</span>
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <p id="userName" class="text-sm font-semibold dark:text-white">--</p>
+                                <p id="userRole" class="text-xs text-gray-500" data-i18n="header.admin">Admin</p>
+                            </div>
+                        </button>
+                        <div id="userDropdown" class="hidden absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 rounded-2xl elevation-3 border border-gray-200 dark:border-gray-700 py-2 z-50">
+                            <div class="px-4 py-3 border-b dark:border-gray-700">
+                                <p class="font-semibold dark:text-white" id="dropdownUserName">--</p>
+                                <p class="text-sm text-slate-500 dark:text-slate-400" id="dropdownUserEmail">--</p>
+                            </div>
+                            <a id="dropdownProfileLink" href="#" onclick="ui.navigateTo('profile'); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white">
+                                <i class="fas fa-user text-slate-400"></i><span data-i18n="header.myProfile">Mi Perfil</span>
+                            </a>
+                            <a id="dropdownSettingsLink" href="#" onclick="ui.navigateTo('settings'); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white">
+                                <i class="fas fa-cog text-slate-400"></i><span data-i18n="header.settings">Configuracion</span>
+                            </a>
+                            <div class="border-t dark:border-gray-700 my-2"></div>
+                            <a href="#" onclick="AppController.logout(); return false;" class="flex items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                                <i class="fas fa-sign-out-alt"></i><span data-i18n="header.logout">Cerrar Sesion</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div id="practicalExamBanner" class="hidden"></div>
+
+        <div class="flex flex-1 overflow-hidden bg-white dark:bg-gray-900">
+            <aside id="sidebar" class="enterprise-sidebar flex flex-col transition-transform duration-300 lg:translate-x-0 -translate-x-full fixed lg:static inset-y-0 left-0 z-40 h-screen lg:h-auto">
+                <div class="flex-1 overflow-y-auto py-4 px-3 min-h-0">
+                    <div id="sidebarNavSections" class="space-y-2"></div>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="flex items-center gap-3">
+                        <div class="footer-avatar">
+                            <span id="sidebarUserInitials">--</span>
+                        </div>
+                        <div class="footer-info min-w-0 flex-1">
+                            <p id="sidebarUserName" class="text-sm font-semibold text-slate-700 dark:text-gray-200 truncate">--</p>
+                            <p id="sidebarUserRole" class="text-[11px] text-slate-400 dark:text-gray-500">--</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            <div id="sidebarOverlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden hidden transition-opacity"></div>
+            <main id="mainContent" class="flex-1 overflow-y-auto bg-white dark:bg-gray-900 p-4 lg:p-6"></main>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="fixed inset-0 z-[100] hidden">
+        <div class="relative h-full flex">
+            <div class="hidden lg:flex flex-col items-center justify-center w-1/2 p-12 login-left-premium relative overflow-hidden">
+                <div class="login-orb w-72 h-72 bg-cyan-400/20 top-10 left-10" style="animation-delay: 0s;"></div>
+                <div class="login-orb w-96 h-96 bg-blue-500/15 bottom-20 right-10" style="animation-delay: -3s;"></div>
+                <div class="login-orb w-56 h-56 bg-sky-300/20 top-1/2 left-1/3" style="animation-delay: -6s;"></div>
+                
+                <div class="ocean-waves">
+                    <div class="wave wave-1"></div>
+                    <div class="wave wave-2"></div>
+                    <div class="wave wave-3"></div>
+                </div>
+                <div class="bubbles">
+                    <div class="bubble bubble-1"></div>
+                    <div class="bubble bubble-2"></div>
+                    <div class="bubble bubble-3"></div>
+                    <div class="bubble bubble-4"></div>
+                    <div class="bubble bubble-5"></div>
+                    <div class="bubble bubble-6"></div>
+                    <div class="bubble bubble-7"></div>
+                    <div class="bubble bubble-8"></div>
+                </div>
+                
+                <div class="relative mb-8">
+                    <div class="login-glow-ring"></div>
+                    <div class="w-48 h-48 mx-auto rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl relative z-10">
+                        <img src="logo-river.png" alt="River Wall" class="w-36 h-36 object-contain drop-shadow-2xl" style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));">
+                    </div>
+                </div>
+                
+                <h2 class="text-white text-4xl font-black mb-2 text-center tracking-tight">RIVER-WALL ERP V.5.0</h2>
+                <p class="text-cyan-100/70 text-center text-sm uppercase tracking-[0.25em] font-medium mb-12">Enterprise Retail Management System</p>
+                
+                <div class="mt-4 grid grid-cols-1 gap-4 w-full max-w-xs">
+                    <div class="login-feature-glass rounded-2xl px-5 py-4 flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400/30 to-blue-500/30 flex items-center justify-center border border-white/10 shadow-lg">
+                            <i class="fas fa-cash-register text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-white/90 text-sm font-semibold" data-i18n="login.pos">Punto de Venta</p>
+                            <p class="text-white/40 text-xs mt-0.5">Ventas rápidas e intuitivas</p>
+                        </div>
+                    </div>
+                    <div class="login-feature-glass rounded-2xl px-5 py-4 flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400/30 to-blue-500/30 flex items-center justify-center border border-white/10 shadow-lg">
+                            <i class="fas fa-chart-line text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-white/90 text-sm font-semibold" data-i18n="login.reports">Informes &amp; Analítica</p>
+                            <p class="text-white/40 text-xs mt-0.5">Datos en tiempo real</p>
+                        </div>
+                    </div>
+                    <div class="login-feature-glass rounded-2xl px-5 py-4 flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400/30 to-blue-500/30 flex items-center justify-center border border-white/10 shadow-lg">
+                            <i class="fas fa-boxes text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-white/90 text-sm font-semibold" data-i18n="login.inventory">Gestión de Inventario</p>
+                            <p class="text-white/40 text-xs mt-0.5">Control total de stock</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="absolute bottom-8 left-0 right-0 text-center">
+                    <p class="text-white/60 text-xs tracking-wider">V.5.0-SYSCOHADA · D-WALL S.L.</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-1 flex-col items-center justify-start p-6 bg-gradient-to-br from-slate-50 via-white to-sky-50/50 dark:from-gray-900 dark:via-gray-900 dark:to-sky-950/20 relative overflow-hidden overflow-y-auto">
+                <div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style="background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0); background-size: 32px 32px;"></div>
+                
+                <div class="w-full max-w-md relative z-10 px-4">
+                    <div class="flex justify-center mb-8 lg:hidden login-enter-1">
+                        <img src="logo-river.png" alt="River Wall" class="h-28 drop-shadow-xl">
+                    </div>
+                    
+                    <div class="login-form-card rounded-3xl p-8 sm:p-10">
+                        <div class="login-enter-1 text-center">
+                            <h1 class="text-3xl font-black text-gray-800 dark:text-white mb-2 tracking-tight" data-i18n="login.welcome">Bienvenido</h1>
+                            <p class="text-slate-400 dark:text-gray-500 text-sm mb-8" data-i18n="login.subtitle">Inicia sesión para continuar</p>
+                        </div>
+                        
+                        <form id="loginForm" class="space-y-5">
+                            <div class="login-enter-2">
+                                <label class="block text-xs font-bold text-gray-600 dark:text-slate-400 mb-2 uppercase tracking-wider" data-i18n="login.email">Email</label>
+                                <div class="relative group">
+                                    <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors duration-300"></i>
+                                    <input type="email" id="loginEmail" required autocomplete="username"
+                                        class="login-input-premium w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-900 dark:text-white outline-none"
+                                        data-i18n-placeholder="login.email" placeholder="admin@empresa.com">
+                                </div>
+                            </div>
+                            
+                            <div class="login-enter-3">
+                                <div class="flex justify-between mb-2">
+                                    <label class="text-xs font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider" data-i18n="login.password">Contraseña</label>
+                                    <a href="#" onclick="AppController.showPasswordReset(); return false;" class="text-xs text-sky-600 hover:text-sky-700 dark:text-sky-400 font-semibold transition-colors" data-i18n="login.forgotPassword">¿Olvidaste tu contraseña?</a>
+                                </div>
+                                <div class="relative group">
+                                    <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors duration-300"></i>
+                                    <input type="password" id="loginPassword" required autocomplete="current-password"
+                                        class="login-input-premium w-full pl-11 pr-12 py-3.5 rounded-xl text-gray-900 dark:text-white outline-none"
+                                        placeholder="••••••••">
+                                    <button type="button" id="togglePassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="login-enter-4">
+                                <label class="block text-xs font-bold text-gray-600 dark:text-slate-400 mb-2 uppercase tracking-wider">PIN de recuperación <span class="text-slate-400 font-normal normal-case">(opcional)</span></label>
+                                <div class="relative group">
+                                    <i class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors duration-300"></i>
+                                    <input type="password" id="recoveryPin" maxlength="6" autocomplete="off"
+                                        class="login-input-premium w-full pl-11 pr-4 py-3.5 rounded-xl text-gray-900 dark:text-white outline-none"
+                                        placeholder="6 dígitos">
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2 ml-1">Útil para acceso sin conexión a internet</p>
+                            </div>
+                            
+                            <div class="login-enter-5 flex items-center gap-2.5">
+                                <input type="checkbox" id="rememberMe" class="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 cursor-pointer">
+                                <label for="rememberMe" class="text-sm text-slate-500 dark:text-slate-400 cursor-pointer font-medium" data-i18n="login.rememberMe">Recordarme</label>
+                            </div>
+                            
+                            <button type="submit" id="loginBtn" class="login-enter-6 group login-btn-shimmer w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 hover:shadow-xl transition-all">
+                                <span data-i18n="login.signIn">Iniciar Sesión</span><i class="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
+                            </button>
+                        </form>
+                        
+                        <div class="login-enter-7 mt-5">
+                            <div class="login-pos-card rounded-2xl p-4">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                                        <i class="fas fa-cash-register text-sky-600 dark:text-sky-400 text-xs"></i>
+                                    </div>
+                                    <p class="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider" data-i18n="login.fastPosTitle">Acceso rápido para cajeros</p>
+                                </div>
+                                <button type="button" onclick="AppController.openPOSAccessModal()" class="w-full py-3 rounded-xl bg-white dark:bg-gray-800 border border-sky-200 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-sky-50 dark:hover:bg-sky-900/30 hover:border-sky-300 dark:hover:border-sky-700 transition-all shadow-sm hover:shadow-md">
+                                    <i class="fas fa-store"></i><span data-i18n="login.directPOS">Entrar directo al Punto de Venta</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <div class="flex items-center gap-4 my-5">
+                                <div class="flex-1 login-divider-line"></div>
+                                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest" data-i18n="login.orContinueWith">O continúa con</span>
+                                <div class="flex-1 login-divider-line"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="AppController.loginWithGoogle()" class="login-social-btn py-3 rounded-xl flex items-center justify-center gap-2 font-medium text-sm text-gray-700 dark:text-gray-200">
+                                    <i class="fab fa-google text-red-500"></i><span>Google</span>
+                                </button>
+                                <button onclick="AppController.loginWithMicrosoft()" class="login-social-btn py-3 rounded-xl flex items-center justify-center gap-2 font-medium text-sm text-gray-700 dark:text-gray-200">
+                                    <i class="fab fa-microsoft text-blue-500"></i><span>Microsoft</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 flex justify-center gap-5 text-sm">
+                            <button onclick="ui.showLicenseActivationModal()" class="text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 font-medium transition-colors">
+                                <i class="fas fa-key mr-1.5"></i><span data-i18n="login.activateLicense">Activar Licencia</span>
+                            </button>
+                            <button onclick="ui.startDemoMode()" class="text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 font-medium transition-colors">
+                                <i class="fas fa-play-circle mr-1.5"></i><span data-i18n="login.demoMode">Modo Demo</span>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-gray-200/30 dark:border-gray-700/30 text-center">
+                            <p class="text-slate-500 dark:text-slate-400 text-xs font-semibold tracking-wide" data-i18n="login.copyright">© 2026 D-WALL S.L. · Todos los derechos reservados</p>
+                            <div class="mt-2 text-slate-400 dark:text-gray-500 text-[11px] leading-relaxed max-w-xs mx-auto">
+                                <span class="font-semibold text-slate-500 dark:text-slate-400">Propiedad intelectual total de D-WALL S.L.</span><br>
+                                Sede: Malabo, Guinea Ecuatorial<br>
+                                Desarrollados por el departamento de Desarrollo de Soluciones Tecnológicas y Robótica
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-[60] space-y-3 pointer-events-none" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Shared i18n -->
+    <script src="scripts/rw-i18n.js?v=2"></script>
+
+    <!-- Compatibility Stubs for Supabase Migration -->
+    <script>
+        window.licenseManager = {
+            generateToken: (p) => 'mock_' + Date.now(),
+            storeLicense: (t) => localStorage.setItem('rw_license_token', t),
+            getStoredLicense: () => null,
+            isValid: () => true,
+            getPlan: () => 'enterprise',
+            getDaysRemaining: () => 999,
+            getExpiryDate: () => new Date(Date.now() + 86400000 * 999).toISOString(),
+            verifyToken: (t) => ({ tenant: 'default', plan: 'enterprise', days: 999, features: ['all'] })
+        };
+        window.isPageAllowed = function(page) { return true; };
+        window.getCurrentPlan = function() { return 'enterprise'; };
+        window.planLevel = function(plan) { return 4; };
+    </script>
+
+    <!-- Environment Configuration -->
+    <script src="env.js?v=4"></script>
+    <script src="scripts/thermal-printer.js?v=16"></script>
+    
+    <!-- ============================================
+         RIVER-WALL ERP V.5.0 - SUPABASE EDITION
+         Modular Architecture
+         ============================================ -->
+    
+    <!-- 1. Supabase SDK + Offline Fallback -->
+    <script src="vendor/supabase.js?v=1"></script>
+    <script src="offline-mode.js?v=4"></script>
+    <script src="supabase-client.js?v=7"></script>
+    
+    <!-- 2. Firebase Compatibility Layer (prevents legacy code from crashing) -->
+    <script src="modules/firebase-compat.js?v=7"></script>
+    
+    <!-- 3. Core Data Layer -->
+    <script src="modules/data-store.js?v=4"></script>
+    <script src="modules/app-state.js?v=3"></script>
+    
+    <!-- 4. UI Layer (~16k lines of UI logic) -->
+    <script src="modules/ui-controller.js?v=4"></script>
+    
+    <!-- 5. Offline Auth (needed by AppController) -->
+    <script src="modules/offline-auth.js?v=2"></script>
+    
+    <!-- 6. App Bootstrap -->
+    <script src="modules/app-controller.js?v=4"></script>
+    
+    <!-- 6. Supabase Adapter (monkey-patches core for Supabase backend) -->
+    <script src="modules/supabase-adapter.js?v=6"></script>
+    <script src="scripts/rw-pos.js?v=1"></script>
+    
+    <!-- 7. Bootstrap -->
+    <script>
+        (function() {
+            // Sync env.js config to localStorage for consistency
+            if (window.ENV?.SUPABASE?.URL && window.ENV?.SUPABASE?.ANON_KEY) {
+                localStorage.setItem('sb_url', window.ENV.SUPABASE.URL);
+                localStorage.setItem('sb_anon_key', window.ENV.SUPABASE.ANON_KEY);
+                console.log('[Bootstrap] Supabase config synced from env.js to localStorage');
+            } else if (!localStorage.getItem('sb_url')) {
+                console.log('[Bootstrap] Supabase not configured yet. Set localStorage sb_url and sb_anon_key, or call SupabaseClient.configure(url, key)');
+            }
+            
+            function startApp() {
+                if (typeof AppController !== 'undefined' && AppController.init) {
+                    AppController.init();
+                } else {
+                    console.error('[Bootstrap] AppController not loaded');
+                }
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', startApp);
+            } else {
+                startApp();
+            }
+        })();
+    </script>
+</body>
+</html>

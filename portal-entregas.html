@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'self' https://www.google.com https://maps.google.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0284c7">
+    <title>Portal de Entregas | RIVER-WALL</title>
+    <script src="modules/security-utils.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --rw-primary: #0284c7;
+            --rw-primary-deep: #0c4a6e;
+            --rw-surface: rgba(255, 255, 255, 0.72);
+            --rw-surface-border: rgba(255, 255, 255, 0.42);
+            --rw-text: #0f172a;
+            --rw-muted: #475569;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background:
+                radial-gradient(1200px 700px at -10% -20%, #bae6fd 0%, rgba(186,230,253,0) 45%),
+                radial-gradient(900px 500px at 110% 10%, #67e8f9 0%, rgba(103,232,249,0) 40%),
+                linear-gradient(160deg, #ecfeff 0%, #f8fafc 50%, #f1f5f9 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: var(--rw-text);
+        }
+
+        .dark {
+            --rw-surface: rgba(15, 23, 42, 0.62);
+            --rw-surface-border: rgba(148, 163, 184, 0.25);
+            --rw-text: #e2e8f0;
+            --rw-muted: #94a3b8;
+        }
+
+        .dark body {
+            background:
+                radial-gradient(1200px 700px at -10% -20%, #0e7490 0%, rgba(14,116,144,0) 45%),
+                radial-gradient(900px 500px at 110% 10%, #1e3a8a 0%, rgba(30,58,138,0) 40%),
+                linear-gradient(160deg, #020617 0%, #0f172a 50%, #1e293b 100%);
+        }
+
+        .dark .text-slate-900 { color: #e2e8f0 !important; }
+        .dark .text-slate-800 { color: #cbd5e1 !important; }
+        .dark .text-slate-700,
+        .dark .text-slate-700\/90,
+        .dark .text-slate-600,
+        .dark .text-slate-500 { color: #94a3b8 !important; }
+        .dark .bg-white\/80,
+        .dark .bg-white\/70,
+        .dark .bg-white\/60 { background: rgba(15, 23, 42, 0.5) !important; }
+        .dark .border-white\/70,
+        .dark .border-white\/80 { border-color: rgba(148, 163, 184, 0.35) !important; }
+        .dark .border-sky-200 { border-color: rgba(125, 211, 252, 0.4) !important; }
+        .dark input,
+        .dark textarea,
+        .dark select { color: #e2e8f0; }
+        .dark #errorCard {
+            background: rgba(127, 29, 29, 0.2);
+            color: #fecaca;
+            border-color: rgba(248, 113, 113, 0.4) !important;
+        }
+
+        .brand-mono { font-family: 'Space Mono', monospace; }
+
+        .glass-panel {
+            background: var(--rw-surface);
+            border: 1px solid var(--rw-surface-border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 12px 35px rgba(2, 132, 199, 0.08);
+        }
+
+        .hero-shine {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-shine::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(115deg, rgba(255,255,255,0) 10%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 90%);
+            transform: translateX(-110%);
+            animation: sweep 5.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .floating-orb {
+            position: fixed;
+            border-radius: 9999px;
+            filter: blur(6px);
+            opacity: 0.22;
+            pointer-events: none;
+            z-index: 0;
+            animation: drift 14s ease-in-out infinite;
+        }
+
+        .orb-a {
+            width: 220px;
+            height: 220px;
+            background: #0ea5e9;
+            top: 14%;
+            left: -60px;
+        }
+
+        .orb-b {
+            width: 280px;
+            height: 280px;
+            background: #22d3ee;
+            right: -80px;
+            top: 48%;
+            animation-delay: -4s;
+        }
+
+        .orb-c {
+            width: 180px;
+            height: 180px;
+            background: #38bdf8;
+            left: 40%;
+            bottom: -50px;
+            animation-delay: -8s;
+        }
+
+        .grid-pattern {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(2, 132, 199, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(2, 132, 199, 0.05) 1px, transparent 1px);
+            background-size: 34px 34px;
+            mask-image: radial-gradient(circle at center, black 20%, transparent 85%);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 36px;
+            bottom: -16px;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(2,132,199,0.35), rgba(148,163,184,0.25));
+        }
+
+        .timeline-item:last-child::before { display: none; }
+
+        .timeline-dot {
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12);
+        }
+
+        @keyframes drift {
+            0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
+            50% { transform: translateY(-22px) translateX(10px) scale(1.06); }
+        }
+
+        @keyframes sweep {
+            0% { transform: translateX(-110%); }
+            45%, 100% { transform: translateX(110%); }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-900">
+    <div class="floating-orb orb-a"></div>
+    <div class="floating-orb orb-b"></div>
+    <div class="floating-orb orb-c"></div>
+    <div class="grid-pattern"></div>
+
+    <main class="relative z-10 max-w-4xl mx-auto px-4 py-8 sm:py-10">
+        <header class="glass-panel hero-shine rounded-3xl p-6 sm:p-8 mb-6 border border-white/70">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl bg-white/70 border border-white/80 flex items-center justify-center shadow-sm">
+                        <img src="logo-river.png" alt="RIVER-WALL" class="w-12 h-12 object-contain">
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.22em] text-sky-800/80 font-semibold">RIVER-WALL Logistics</p>
+                        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">Portal de Entregas</h1>
+                    </div>
+                </div>
+                <div class="hidden sm:flex items-center gap-2 rounded-full bg-white/70 border border-white/80 px-4 py-2 text-xs text-slate-600">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Seguimiento en tiempo real
+                </div>
+            </div>
+
+            <p class="text-slate-700/90 text-sm sm:text-base">Consulta el estado de tu pedido con tu codigo de tracking y revisa cada cambio en la linea de tiempo.</p>
+
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <input id="trackingInput" type="text" maxlength="12" placeholder="Ejemplo: A1B2C3D4E5"
+                    class="flex-1 px-4 py-3 rounded-2xl border border-sky-200 bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-500 uppercase text-base font-medium">
+                <button id="searchBtn" class="px-7 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-500 text-white font-semibold hover:brightness-110 transition-all shadow-lg shadow-sky-500/20">Buscar</button>
+            </div>
+            <p id="helperText" class="text-xs text-slate-600 mt-2">Solo letras y numeros, sin espacios.</p>
+        </header>
+
+        <div id="resultCard" class="hidden glass-panel rounded-3xl p-6 sm:p-7 border border-white/70">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <p class="text-xs text-slate-500">Codigo</p>
+                    <p id="trackingCodeLabel" class="brand-mono text-sky-800 font-bold tracking-wider"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="copyCodeBtn" class="px-3 py-1.5 rounded-xl text-xs font-semibold border border-sky-200 text-sky-700 hover:bg-sky-50 transition-colors">Copiar codigo</button>
+                    <button id="shareTrackBtn" class="px-3 py-1.5 rounded-xl text-xs font-semibold border border-sky-200 text-sky-700 hover:bg-sky-50 transition-colors">Compartir</button>
+                    <div id="statusBadge"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+                <div class="rounded-2xl bg-white/60 border border-white/80 px-4 py-3">
+                    <p class="text-xs text-slate-500">Ticket</p>
+                    <p id="ticketLabel" class="font-semibold text-slate-900">-</p>
+                </div>
+                <div class="rounded-2xl bg-white/60 border border-white/80 px-4 py-3">
+                    <p class="text-xs text-slate-500">Cliente</p>
+                    <p id="clientLabel" class="font-semibold text-slate-900">-</p>
+                </div>
+                <div class="rounded-2xl bg-white/60 border border-white/80 px-4 py-3 sm:col-span-2">
+                    <p class="text-xs text-slate-500">Direccion de entrega</p>
+                    <p id="addressLabel" class="font-semibold text-slate-900">-</p>
+                </div>
+                <div class="rounded-2xl bg-white/60 border border-white/80 px-4 py-3">
+                    <p class="text-xs text-slate-500">Fecha programada</p>
+                    <p id="scheduledLabel" class="font-semibold text-slate-900">-</p>
+                </div>
+                <div class="rounded-2xl bg-white/60 border border-white/80 px-4 py-3">
+                    <p class="text-xs text-slate-500">Ultima actualizacion</p>
+                    <p id="updatedLabel" class="font-semibold text-slate-900">-</p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h2 class="font-semibold text-slate-900 mb-3">Linea de tiempo</h2>
+                <div id="timeline" class="space-y-4"></div>
+            </div>
+
+            <div id="mapCard" class="mt-6 hidden">
+                <h2 class="font-semibold text-slate-900 mb-3">Mapa de entrega</h2>
+                <div class="rounded-2xl overflow-hidden border border-white/80 shadow-sm">
+                    <iframe id="mapFrame" title="Mapa de entrega" class="w-full h-56" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorCard" class="hidden glass-panel border border-red-200 text-red-700 rounded-2xl p-4"></div>
+    </main>
+
+    <!-- Environment Configuration -->
+    <script src="env.js"></script>
+
+    <!-- Supabase SDK + Compat Layer -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="modules/firestore-compat.js?v=2"></script>
+    
+    <script type="module">
+        const FC = window.FirestoreCompat;
+        const { initializeApp, getFirestore, doc, getDoc } = FC;
+
+        const compatApp = initializeApp();
+        const db = getFirestore(compatApp);
+
+        const trackingInput = document.getElementById('trackingInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultCard = document.getElementById('resultCard');
+        const errorCard = document.getElementById('errorCard');
+        const statusBadge = document.getElementById('statusBadge');
+        const copyCodeBtn = document.getElementById('copyCodeBtn');
+        const shareTrackBtn = document.getElementById('shareTrackBtn');
+        const mapCard = document.getElementById('mapCard');
+        const mapFrame = document.getElementById('mapFrame');
+
+        let lastCode = '';
+
+        const statusLabel = {
+            pendiente: 'Pendiente',
+            programada: 'Programada',
+            en_ruta: 'En ruta',
+            entregada: 'Entregada',
+            incidencia: 'Incidencia'
+        };
+
+        const statusClass = {
+            pendiente: 'bg-amber-100 text-amber-700',
+            programada: 'bg-sky-100 text-sky-700',
+            en_ruta: 'bg-blue-100 text-blue-700',
+            entregada: 'bg-emerald-100 text-emerald-700',
+            incidencia: 'bg-red-100 text-red-700'
+        };
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '-';
+            return date.toLocaleString('es-ES');
+        }
+
+        function showError(message) {
+            resultCard.classList.add('hidden');
+            errorCard.textContent = message;
+            errorCard.classList.remove('hidden');
+        }
+
+        function applySystemTheme() {
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', isDark);
+            const themeColor = isDark ? '#0f172a' : '#0284c7';
+            document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor);
+        }
+
+        function updateMap(address) {
+            const addressLabel = document.getElementById('addressLabel');
+            const cleanAddress = (address || '').trim();
+
+            if (addressLabel) {
+                addressLabel.textContent = cleanAddress || '-';
+            }
+
+            if (!cleanAddress) {
+                mapCard.classList.add('hidden');
+                mapFrame.removeAttribute('src');
+                return;
+            }
+
+            const query = encodeURIComponent(cleanAddress);
+            mapFrame.src = `https://www.google.com/maps?q=${query}&output=embed`;
+            mapCard.classList.remove('hidden');
+        }
+
+        function renderTimeline(timeline = []) {
+            const container = document.getElementById('timeline');
+            if (!timeline.length) {
+                container.innerHTML = '<p class="text-slate-500 text-sm">Sin historial disponible.</p>';
+                return;
+            }
+
+            container.innerHTML = timeline.slice().reverse().map((event) => `
+                <div class="timeline-item relative pl-9">
+                    <div class="timeline-dot absolute left-0 top-1 w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500"></div>
+                    <p class="text-sm font-semibold text-slate-900">${statusLabel[event.status] || event.status || 'Actualizacion'}</p>
+                    <p class="text-xs text-slate-500">${formatDate(event.at)}</p>
+                    <p class="text-sm text-slate-600 mt-1">${event.note || ''}</p>
+                </div>
+            `).join('');
+        }
+
+        async function searchTracking() {
+            const code = (trackingInput.value || '').trim().toUpperCase();
+            trackingInput.value = code;
+
+            if (!/^[A-Z0-9]{8,12}$/.test(code)) {
+                showError('Codigo invalido. Debe tener entre 8 y 12 caracteres alfanumericos.');
+                return;
+            }
+
+            errorCard.classList.add('hidden');
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Buscando...';
+
+            try {
+                const snap = await getDoc(doc(db, 'rw_public_deliveries', code));
+                if (!snap.exists()) {
+                    showError('No encontramos una entrega para ese codigo.');
+                    return;
+                }
+
+                const delivery = snap.data();
+                document.getElementById('trackingCodeLabel').textContent = code;
+                document.getElementById('ticketLabel').textContent = delivery.ticket ? `#${delivery.ticket}` : '-';
+                document.getElementById('clientLabel').textContent = delivery.clientName || '-';
+                document.getElementById('scheduledLabel').textContent = formatDate(delivery.scheduledAt);
+                document.getElementById('updatedLabel').textContent = formatDate(delivery.updatedAt);
+                updateMap(delivery.address || '');
+                lastCode = code;
+
+                const status = delivery.status || 'pendiente';
+                statusBadge.innerHTML = `<span class="px-3 py-1 rounded-full text-xs font-semibold ${statusClass[status] || statusClass.pendiente}">${statusLabel[status] || status}</span>`;
+
+                renderTimeline(Array.isArray(delivery.timeline) ? delivery.timeline : []);
+                resultCard.classList.remove('hidden');
+            } catch (error) {
+                console.error('tracking error', error);
+                showError('Error consultando el tracking. Intenta nuevamente.');
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Buscar';
+            }
+        }
+
+        searchBtn.addEventListener('click', searchTracking);
+        trackingInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') searchTracking();
+        });
+
+        copyCodeBtn.addEventListener('click', async () => {
+            if (!lastCode) return;
+            try {
+                await navigator.clipboard.writeText(lastCode);
+                copyCodeBtn.textContent = 'Copiado';
+                setTimeout(() => { copyCodeBtn.textContent = 'Copiar codigo'; }, 1400);
+            } catch (error) {
+                console.error('clipboard error', error);
+            }
+        });
+
+        shareTrackBtn.addEventListener('click', async () => {
+            if (!lastCode) return;
+            const shareUrl = new URL('./portal-entregas.html', window.location.href);
+            shareUrl.searchParams.set('code', lastCode);
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Tracking de entrega',
+                        text: `Sigue tu entrega con el codigo ${lastCode}`,
+                        url: shareUrl.toString()
+                    });
+                    return;
+                } catch (error) {
+                    // fall back to clipboard if user cancels or share fails
+                }
+            }
+
+            try {
+                await navigator.clipboard.writeText(shareUrl.toString());
+                shareTrackBtn.textContent = 'Enlace copiado';
+                setTimeout(() => { shareTrackBtn.textContent = 'Compartir'; }, 1600);
+            } catch (error) {
+                console.error('share fallback error', error);
+            }
+        });
+
+        applySystemTheme();
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applySystemTheme);
+
+        const codeFromUrl = new URLSearchParams(window.location.search).get('code');
+        if (codeFromUrl) {
+            trackingInput.value = codeFromUrl.toUpperCase();
+            searchTracking();
+        }
+    </script>
+</body>
+</html>

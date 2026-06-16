@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIVER-WALL CRM - Fidelización & Billetera</title>
+    <script src="modules/security-utils.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="env.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        rw: { primary: '#0284c7', surface: '#f8fafc', card: '#ffffff', border: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --rw-primary: #0284c7;
+            --rw-primary-dark: #0369a1;
+            --rw-surface: #f8fafc;
+            --rw-card: #ffffff;
+            --rw-border: #e2e8f0;
+            --rw-sidebar-width: 260px;
+            --rw-radius-card: 16px;
+            --rw-shadow-card: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-text { background: linear-gradient(135deg, #0284c7, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-primary-rw { background: linear-gradient(135deg, #0284c7, #06b6d4); color: white; transition: all 0.2s; }
+        .btn-primary-rw:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(2,132,199,0.3); }
+        .btn-secondary-rw { background: white; border: 1px solid var(--rw-border); color: #334155; transition: all 0.2s; }
+        .btn-secondary-rw:hover { background: #f8fafc; }
+        .btn-success-rw { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-danger-rw { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .card-rw { background: white; border-radius: var(--rw-radius-card); box-shadow: var(--rw-shadow-card); border: 1px solid var(--rw-border); }
+        .sidebar-item { transition: all 0.15s; cursor: pointer; }
+        .sidebar-item:hover { background: rgba(2,132,199,0.06); }
+        .sidebar-item.active { background: linear-gradient(90deg, rgba(2,132,199,0.1) 0%, transparent 100%); border-right: 3px solid var(--rw-primary); color: var(--rw-primary); font-weight: 600; }
+        .kpi-card { border-radius: var(--rw-radius-card); padding: 1.5rem; color: white; position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: -50%; right: -20%; width: 150px; height: 150px; background: rgba(255,255,255,0.08); border-radius: 50%; }
+        .table-rw { width: 100%; border-collapse: collapse; }
+        .table-rw th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; background: #f8fafc; border-bottom: 1px solid var(--rw-border); }
+        .table-rw td { padding: 0.875rem 1rem; border-bottom: 1px solid var(--rw-border); font-size: 0.875rem; color: #334155; }
+        .table-rw tr:hover td { background: #f8fafc; }
+        .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-amber { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-purple { background: #f3e8ff; color: #6b21a8; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; border-radius: var(--rw-radius-card); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; width: 100%; }
+        .modal-content.sm { max-width: 420px; }
+        .modal-content.md { max-width: 560px; }
+        .modal-content.lg { max-width: 720px; }
+        .modal-content.xl { max-width: 960px; }
+        .input-rw { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid var(--rw-border); border-radius: 10px; font-size: 0.875rem; outline: none; transition: all 0.2s; background: white; color: #1e293b; }
+        .input-rw:focus { border-color: var(--rw-primary); box-shadow: 0 0 0 3px rgba(2,132,199,0.1); }
+        .tab-btn { padding: 0.625rem 1.25rem; font-size: 0.875rem; font-weight: 500; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .tab-btn:hover { color: #334155; }
+        .tab-btn.active { color: var(--rw-primary); border-bottom-color: var(--rw-primary); }
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 60; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { padding: 0.875rem 1.25rem; border-radius: 12px; color: white; font-size: 0.875rem; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+        .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .toast.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .tier-bronze { background: linear-gradient(135deg, #cd7f32, #b87333); color: white; }
+        .tier-silver { background: linear-gradient(135deg, #94a3b8, #64748b); color: white; }
+        .tier-gold { background: linear-gradient(135deg, #fbbf24, #d97706); color: white; }
+        .tier-platinum { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; }
+        .loading-overlay { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: var(--rw-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; }
+        .search-box { position: relative; }
+        .search-box i { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.875rem; }
+        .search-box input { padding-left: 2.25rem; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-overlay">
+        <div class="spinner mb-4"></div>
+        <p class="text-slate-500 font-medium">Conectando a RIVER-WALL CRM...</p>
+        <p id="loadingSubtext" class="text-slate-400 text-sm mt-1">Cargando datos</p>
+    </div>
+
+    <!-- Login Required -->
+    <div id="loginRequired" class="hidden fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center max-w-md px-6">
+            <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-lock text-2xl text-slate-400"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Sesión requerida</h2>
+            <p class="text-slate-500 mb-6">Debes iniciar sesión en RIVER-WALL ERP para acceder al módulo CRM.</p>
+            <a href="software.html" class="inline-flex items-center px-6 py-3 rounded-xl btn-primary-rw font-medium">
+                <i class="fas fa-arrow-right mr-2"></i>Ir a RIVER-WALL ERP V.5.0
+            </a>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="appContainer" class="hidden min-h-screen">
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+            <div class="flex items-center justify-between px-4 lg:px-6 h-16">
+                <div class="flex items-center gap-3">
+                    <button id="mobileMenuBtn" class="lg:hidden p-2 rounded-lg hover:bg-slate-100">
+                        <i class="fas fa-bars text-slate-600"></i>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center">
+                            <i class="fas fa-gem text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-slate-800 text-sm leading-tight">RIVER-WALL <span class="text-sky-600">CRM</span></h1>
+                            <p id="tenantName" class="text-[10px] text-slate-400 leading-tight">Cargando...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="software.html" class="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        <i class="fas fa-arrow-left text-xs"></i>
+                        Volver a RIVER-WALL
+                    </a>
+                    <div class="flex items-center gap-2 pl-3 border-l border-slate-200">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky-100 to-cyan-50 flex items-center justify-center text-sky-600 font-bold text-xs" id="userAvatar">
+                            ?
+                        </div>
+                        <span id="userName" class="text-sm font-medium text-slate-700 hidden md:block">Usuario</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 pt-16 lg:pt-0">
+                <div class="p-4 space-y-1">
+                    <div class="sidebar-item active rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="dashboard" onclick="navigateTo('dashboard')">
+                        <i class="fas fa-chart-pie w-5 text-center"></i>
+                        <span class="text-sm">Dashboard</span>
+                    </div>
+                    <div class="sidebar-item rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="clients" onclick="navigateTo('clients')">
+                        <i class="fas fa-users w-5 text-center"></i>
+                        <span class="text-sm">Clientes CRM</span>
+                    </div>
+                    <div class="sidebar-item rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="wallet" onclick="navigateTo('wallet')">
+                        <i class="fas fa-wallet w-5 text-center"></i>
+                        <span class="text-sm">Billetera</span>
+                    </div>
+                    <div class="sidebar-item rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="coupons" onclick="navigateTo('coupons')">
+                        <i class="fas fa-ticket w-5 text-center"></i>
+                        <span class="text-sm">Cupones</span>
+                    </div>
+                    <div class="sidebar-item rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="campaigns" onclick="navigateTo('campaigns')">
+                        <i class="fas fa-percent w-5 text-center"></i>
+                        <span class="text-sm">Descuentos</span>
+                    </div>
+                    <div class="sidebar-item rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="requests" onclick="navigateTo('requests')">
+                        <i class="fas fa-bell w-5 text-center"></i>
+                        <span class="text-sm">Solicitudes</span>
+                        <span id="pendingRequestsBadge" class="hidden ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div class="sidebar-item rounded-xl px-3 py-2.5 flex items-center gap-3" data-page="history" onclick="navigateTo('history')">
+                        <i class="fas fa-history w-5 text-center"></i>
+                        <span class="text-sm">Historial</span>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200">
+                    <div class="bg-slate-50 rounded-xl p-3">
+                        <p class="text-xs font-medium text-slate-500 mb-1">Saldo total en billeteras</p>
+                        <p id="totalWalletBalance" class="text-lg font-bold text-slate-800">0 FCFA</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Overlay mobile -->
+            <div id="sidebarOverlay" class="fixed inset-0 bg-black/20 z-30 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+            <!-- Main Content -->
+            <main id="mainContent" class="flex-1 p-4 lg:p-6 min-h-[calc(100vh-64px)]">
+                <!-- Content injected by JS -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modalContainer" class="hidden"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Supabase SDK + Compat Layer -->
+    <script src="vendor/supabase.js?v=1"></script>
+    <script src="env.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="modules/firestore-compat.js?v=2"></script>
+
+    <script type="module">
+        // ==========================================
+        // SUPABASE (via Firestore Compat Layer)
+        // ==========================================
+        const FC = window.FirestoreCompat;
+        const {
+            initializeApp, getAuth, onAuthStateChanged, getFirestore,
+            collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
+            query, where, orderBy, limit, onSnapshot
+        } = FC;
+
+        // ==========================================
+        // INIT SUPABASE
+        // ==========================================
+        const compatApp = initializeApp();
+        const auth = getAuth(compatApp);
+        const db = getFirestore(compatApp);
+
+        // ==========================================
+        // GLOBAL STATE
+        // ==========================================
+        const CRM = {
+            user: null,
+            tenantId: null,
+            tenantName: '',
+            currentPage: 'dashboard',
+            clients: [],
+            loyaltyCards: [],
+            walletTransactions: [],
+            crmCoupons: [],
+            crmCouponPurchases: [],
+            reloadRequests: [],
+            discountCampaigns: [],
+            crmActivities: [],
+            filters: {},
+            listeners: [],
+            maxReloadAmount: 1000000
+        };
+
+        // ==========================================
+        // UTILS
+        // ==========================================
+        const fmtMoney = (n) => (n || 0).toLocaleString('es-GQ') + ' FCFA';
+        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-GQ') : '-';
+        const fmtDateTime = (d) => d ? new Date(d).toLocaleString('es-GQ') : '-';
+        const genId = () => {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+        const escapeHtml = (s) => { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+        const nowIso = () => new Date().toISOString();
+
+        function showToast(msg, type = 'success', duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+            toast.innerHTML = `<i class="fas fa-${icon}"></i><span>${escapeHtml(msg)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), duration);
+        }
+
+        // ==========================================
+        // TENANT & AUTH
+        // ==========================================
+        function getTenantFromStorage() {
+            try {
+                const raw = localStorage.getItem('rw_offline_tenant');
+                if (raw) return JSON.parse(raw);
+            } catch (e) { console.warn('Error leyendo tenant:', e); }
+            // Fallback: read from parent window localStorage (iframe context)
+            try {
+                const parentRaw = window.parent && window.parent.localStorage ? window.parent.localStorage.getItem('rw_offline_tenant') : null;
+                if (parentRaw) return JSON.parse(parentRaw);
+            } catch (e) {}
+            // Fallback desde URL param (iframe modal)
+            try {
+                const urlTenant = new URLSearchParams(window.location.search).get('tenant');
+                if (urlTenant) return { id: urlTenant, businessName: 'Negocio' };
+            } catch (e) {}
+            return null;
+        }
+
+        async function initApp() {
+            const loadingSubtext = document.getElementById('loadingSubtext');
+            loadingSubtext.textContent = 'Verificando sesión...';
+
+            let sessionResolved = false;
+            let authChecked = false;
+            const resolveSession = async (user) => {
+                if (sessionResolved) return;
+                if (!user) {
+                    // onAuthStateChanged dispara primero con null antes de hidratar
+                    // No bloquear aquí; esperar a que Firebase Auth recupere la sesión
+                    authChecked = true;
+                    return;
+                }
+                sessionResolved = true;
+                CRM.user = user;
+                document.getElementById('userName').textContent = user.displayName || user.email || 'Usuario';
+                document.getElementById('userAvatar').textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+
+                loadingSubtext.textContent = 'Cargando tenant...';
+                const tenant = getTenantFromStorage();
+                if (tenant?.id) {
+                    CRM.tenantId = tenant.id;
+                    CRM.tenantName = tenant.businessName || tenant.name || 'Mi Negocio';
+                    document.getElementById('tenantName').textContent = CRM.tenantName;
+                } else {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists()) {
+                        const ud = userDoc.data();
+                        if (ud.tenantId) CRM.tenantId = ud.tenantId;
+                    }
+                    if (!CRM.tenantId) {
+                        CRM.tenantId = 'default';
+                        showToast('Usando tenant por defecto', 'warning');
+                    }
+                }
+
+                loadingSubtext.textContent = 'Cargando datos...';
+                await loadAllData();
+
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('appContainer').classList.remove('hidden');
+                document.getElementById('appContainer').classList.add('flex', 'flex-col');
+
+                navigateTo('dashboard');
+                startRealtimeListeners();
+                updateTotalWalletBalance();
+                handlePreselectedClient();
+            };
+
+            onAuthStateChanged(auth, resolveSession);
+
+            // Backup: verificar currentUser periódicamente durante 8 segundos
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+                checkCount++;
+                if (sessionResolved) { clearInterval(checkInterval); return; }
+                if (auth.currentUser) {
+                    clearInterval(checkInterval);
+                    resolveSession(auth.currentUser);
+                    return;
+                }
+                if (checkCount >= 16) { // 16 * 500ms = 8 segundos
+                    clearInterval(checkInterval);
+                    if (!sessionResolved) {
+                        sessionResolved = true;
+                        document.getElementById('loadingScreen').classList.add('hidden');
+                        document.getElementById('loginRequired').classList.remove('hidden');
+                    }
+                }
+            }, 500);
+        }
+
+        // ==========================================
+        // DATA LOADING
+        // ==========================================
+        async function loadAllData() {
+            const scopeId = CRM.tenantId; // shared scope
+            const cols = ['clients','loyaltyCards','walletTransactions','crmCoupons','crmCouponPurchases','reloadRequests','discountCampaigns','crmActivities'];
+            for (const col of cols) {
+                try {
+                    const snap = await getDocs(query(
+                        collection(db, 'rw_tenants', CRM.tenantId, 'users', scopeId, col),
+                        orderBy('createdAt', 'desc'),
+                        limit(500)
+                    ));
+                    CRM[col] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch (e) {
+                    console.warn(`No se pudo cargar ${col}:`, e);
+                    CRM[col] = [];
+                }
+            }
+            // Enrich clients with CRM data from localStorage (software.html data)
+            try {
+                const localClientsRaw = localStorage.getItem(`rw_${CRM.tenantId}_clients`);
+                if (localClientsRaw) {
+                    const localClients = JSON.parse(localClientsRaw);
+                    if (Array.isArray(localClients) && localClients.length > 0) {
+                        // Merge cloud CRM clients with local software clients
+                        const localMap = new Map(localClients.map(c => [c.id, c]));
+                        CRM.clients = CRM.clients.map(c => {
+                            const local = localMap.get(c.id);
+                            return local ? { ...local, ...c } : c;
+                        });
+                        // Add any local clients not in cloud
+                        const cloudIds = new Set(CRM.clients.map(c => c.id));
+                        for (const lc of localClients) {
+                            if (!cloudIds.has(lc.id)) CRM.clients.push(lc);
+                        }
+                    }
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        function startRealtimeListeners() {
+            // Listen for reload requests to update badge
+            const scopeId = CRM.tenantId;
+            try {
+                const unsub = onSnapshot(
+                    query(collection(db, 'rw_tenants', CRM.tenantId, 'users', scopeId, 'reloadRequests'), where('status', '==', 'pending')),
+                    (snap) => {
+                        const count = snap.size;
+                        const badge = document.getElementById('pendingRequestsBadge');
+                        badge.textContent = count;
+                        badge.classList.toggle('hidden', count === 0);
+                    }
+                );
+                CRM.listeners.push(unsub);
+            } catch (e) { console.warn('Realtime listener error:', e); }
+        }
+
+        // ==========================================
+        // NAVIGATION
+        // ==========================================
+        window.navigateTo = function(pageId) {
+            CRM.currentPage = pageId;
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.toggle('active', el.dataset.page === pageId));
+            const main = document.getElementById('mainContent');
+            main.innerHTML = '<div class="flex items-center justify-center h-64"><div class="spinner"></div></div>';
+            setTimeout(() => {
+                switch(pageId) {
+                    case 'dashboard': renderDashboard(main); break;
+                    case 'clients': renderClients(main); break;
+                    case 'wallet': renderWallet(main); break;
+                    case 'coupons': renderCoupons(main); break;
+                    case 'campaigns': renderCampaigns(main); break;
+                    case 'requests': renderRequests(main); break;
+                    case 'history': renderHistory(main); break;
+                    default: renderDashboard(main);
+                }
+            }, 100);
+        };
+
+        window.toggleSidebar = function() {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebarOverlay');
+            sb.classList.toggle('-translate-x-full');
+            ov.classList.toggle('hidden');
+        };
+
+        document.getElementById('mobileMenuBtn')?.addEventListener('click', toggleSidebar);
+
+        // ==========================================
+        // DASHBOARD
+        // ==========================================
+        function renderDashboard(container) {
+            const totalClients = CRM.clients.length;
+            const clientsWithWallet = CRM.clients.filter(c => (c.walletBalance || 0) > 0).length;
+            const totalWallet = CRM.clients.reduce((s, c) => s + (c.walletBalance || 0), 0);
+            const totalPoints = CRM.clients.reduce((s, c) => s + (c.loyaltyPoints || 0), 0);
+            const activeCoupons = CRM.crmCouponPurchases.filter(cp => cp.status === 'active').length;
+            const pendingReqs = CRM.reloadRequests.filter(r => r.status === 'pending').length;
+            const activeCampaigns = CRM.discountCampaigns.filter(c => {
+                const now = new Date().toISOString().split('T')[0];
+                return c.isActive && c.startDate <= now && c.endDate >= now;
+            }).length;
+
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold gradient-text mb-1">Dashboard CRM</h2>
+                        <p class="text-slate-500 text-sm">Resumen de fidelización y billeteras</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="kpi-card bg-gradient-to-br from-sky-500 to-cyan-500">
+                            <p class="text-white/80 text-sm">Total Clientes</p>
+                            <p class="text-3xl font-bold">${totalClients}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <p class="text-white/80 text-sm">Billeteras Activas</p>
+                            <p class="text-3xl font-bold">${clientsWithWallet}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-amber-500 to-orange-500">
+                            <p class="text-white/80 text-sm">Saldo Total</p>
+                            <p class="text-3xl font-bold">${fmtMoney(totalWallet)}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-violet-500 to-purple-500">
+                            <p class="text-white/80 text-sm">Puntos en Circulación</p>
+                            <p class="text-3xl font-bold">${totalPoints.toLocaleString('es-GQ')}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 card-rw p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-slate-800">Actividad Reciente</h3>
+                                <button onclick="navigateTo('history')" class="text-sm text-sky-600 hover:text-sky-700 font-medium">Ver todo</button>
+                            </div>
+                            ${renderActivityList(8)}
+                        </div>
+                        <div class="space-y-6">
+                            <div class="card-rw p-6">
+                                <h3 class="font-bold text-slate-800 mb-4">Estado Rápido</h3>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                                        <span class="text-sm text-slate-600"><i class="fas fa-ticket text-sky-500 mr-2"></i>Cupones activos</span>
+                                        <span class="font-bold text-slate-800">${activeCoupons}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                                        <span class="text-sm text-slate-600"><i class="fas fa-bell text-amber-500 mr-2"></i>Recargas pendientes</span>
+                                        <span class="font-bold text-slate-800">${pendingReqs}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                                        <span class="text-sm text-slate-600"><i class="fas fa-percent text-emerald-500 mr-2"></i>Campañas vigentes</span>
+                                        <span class="font-bold text-slate-800">${activeCampaigns}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-rw p-6">
+                                <h3 class="font-bold text-slate-800 mb-3">Top Clientes por Puntos</h3>
+                                ${renderTopClientsPoints()}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderActivityList(count) {
+            const activities = CRM.crmActivities.slice(0, count);
+            if (!activities.length) return '<div class="empty-state"><i class="fas fa-inbox text-3xl mb-2"></i><p>Sin actividad registrada</p></div>';
+            return `<div class="space-y-3">${activities.map(a => `
+                <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${getActivityIconBg(a.action)}">
+                        <i class="fas ${getActivityIcon(a.action)} text-white text-xs"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-slate-800 font-medium truncate">${escapeHtml(a.description)}</p>
+                        <p class="text-xs text-slate-400">${fmtDateTime(a.createdAt)}</p>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function getActivityIcon(action) {
+            const map = { reload: 'fa-plus', transfer: 'fa-exchange-alt', purchase: 'fa-shopping-cart', redeem: 'fa-gift', coupon: 'fa-ticket', campaign: 'fa-percent', card: 'fa-id-card' };
+            return map[action] || 'fa-circle';
+        }
+        function getActivityIconBg(action) {
+            const map = { reload: 'bg-emerald-500', transfer: 'bg-sky-500', purchase: 'bg-amber-500', redeem: 'bg-purple-500', coupon: 'bg-pink-500', campaign: 'bg-indigo-500', card: 'bg-cyan-500' };
+            return map[action] || 'bg-slate-400';
+        }
+
+        function renderTopClientsPoints() {
+            const top = [...CRM.clients].sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0)).slice(0, 5);
+            if (!top.length) return '<p class="text-sm text-slate-400">Sin datos</p>';
+            return `<div class="space-y-3">${top.map((c, i) => `
+                <div class="flex items-center gap-3">
+                    <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">${i + 1}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-slate-800 truncate">${escapeHtml(c.firstName + ' ' + c.lastName)}</p>
+                    </div>
+                    <span class="text-sm font-bold text-sky-600">${c.loyaltyPoints || 0} pts</span>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        // ==========================================
+        // CLIENTES CRM
+        // ==========================================
+        function renderClients(container) {
+            const filtered = filterClients(CRM.clients);
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Clientes CRM</h2>
+                            <p class="text-slate-500 text-sm">${filtered.length} clientes registrados</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="window.openClientModal()" class="px-4 py-2.5 rounded-xl btn-primary-rw font-medium text-sm">
+                                <i class="fas fa-user-plus mr-2"></i>Nuevo Cliente CRM
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="kpi-card bg-gradient-to-br from-sky-500 to-cyan-500">
+                            <p class="text-white/80 text-sm">Total Clientes</p><p class="text-3xl font-bold">${CRM.clients.length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <p class="text-white/80 text-sm">Con Tarjeta</p><p class="text-3xl font-bold">${CRM.clients.filter(c => c.loyaltyCardNumber).length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-amber-500 to-orange-500">
+                            <p class="text-white/80 text-sm">Billeteras Activas</p><p class="text-3xl font-bold">${CRM.clients.filter(c => (c.walletBalance || 0) > 0).length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-violet-500 to-purple-500">
+                            <p class="text-white/80 text-sm">Puntos Totales</p><p class="text-3xl font-bold">${CRM.clients.reduce((s, c) => s + (c.loyaltyPoints || 0), 0).toLocaleString('es-GQ')}</p>
+                        </div>
+                    </div>
+
+                    <div class="card-rw overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
+                            <div class="search-box flex-1 max-w-md">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Buscar cliente..." class="input-rw"
+                                    value="${CRM.filters.clients?.query || ''}"
+                                    oninput="setClientFilter('query', this.value)">
+                            </div>
+                            <select class="input-rw w-auto" onchange="setClientFilter('tier', this.value)">
+                                <option value="">Todos los niveles</option>
+                                <option value="bronze">Bronce</option>
+                                <option value="silver">Plata</option>
+                                <option value="gold">Oro</option>
+                                <option value="platinum">Platino</option>
+                            </select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table-rw">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Tarjeta</th>
+                                        <th>Nivel</th>
+                                        <th class="text-right">Billetera</th>
+                                        <th class="text-right">Puntos</th>
+                                        <th class="text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${filtered.map(c => renderClientRow(c)).join('')}
+                                    ${filtered.length === 0 ? '<tr><td colspan="6" class="text-center py-8 text-slate-400">No hay clientes que coincidan</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderClientRow(c) {
+            const tier = c.tier || 'bronze';
+            const tierLabels = { bronze: 'Bronce', silver: 'Plata', gold: 'Oro', platinum: 'Platino' };
+            const initials = ((c.firstName || '') + (c.lastName || '')).substring(0, 2).toUpperCase() || '?';
+            return `
+                <tr>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-sky-100 to-cyan-50 flex items-center justify-center text-sky-600 font-bold text-xs">${initials}</div>
+                            <div>
+                                <p class="font-semibold text-slate-800 text-sm">${escapeHtml(c.firstName + ' ' + c.lastName)}</p>
+                                <p class="text-xs text-slate-400">${c.phone || c.email || ''}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${c.loyaltyCardNumber ? `<span class="font-mono text-sm text-slate-700">${c.loyaltyCardNumber}</span>` : '<span class="text-slate-300 text-sm">-</span>'}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="badge ${'tier-' + tier}">${tierLabels[tier]}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-mono font-medium text-slate-800">${fmtMoney(c.walletBalance)}</td>
+                    <td class="px-6 py-4 text-right font-bold text-sky-600">${c.loyaltyPoints || 0}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            <button onclick="openClientCRMModal('${c.id}')" class="p-2 rounded-lg hover:bg-sky-50 text-sky-600" title="Gestionar CRM">
+                                <i class="fas fa-gem"></i>
+                            </button>
+                            <button onclick="openTransferModal('${c.id}')" class="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600" title="Transferir">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                            <button onclick="viewClientHistory('${c.id}')" class="p-2 rounded-lg hover:bg-amber-50 text-amber-600" title="Historial">
+                                <i class="fas fa-history"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+
+        function filterClients(clients) {
+            let res = [...clients];
+            const q = (CRM.filters.clients?.query || '').toLowerCase();
+            const tier = CRM.filters.clients?.tier;
+            if (q) res = res.filter(c => `${c.firstName} ${c.lastName} ${c.phone} ${c.email} ${c.loyaltyCardNumber || ''}`.toLowerCase().includes(q));
+            if (tier) res = res.filter(c => (c.tier || 'bronze') === tier);
+            return res;
+        }
+
+        window.setClientFilter = function(key, value) {
+            CRM.filters.clients = CRM.filters.clients || {};
+            CRM.filters.clients[key] = value;
+            if (CRM.currentPage === 'clients') navigateTo('clients');
+        };
+
+        // ==========================================
+        // CLIENT CRM MODAL (Tarjeta + Billetera + Puntos)
+        // ==========================================
+        window.openClientCRMModal = function(clientId) {
+            const c = CRM.clients.find(x => x.id === clientId);
+            if (!c) return showToast('Cliente no encontrado', 'error');
+            const tierLabels = { bronze: 'Bronce', silver: 'Plata', gold: 'Oro', platinum: 'Platino' };
+            const cardNum = c.loyaltyCardNumber || '';
+            openModal({
+                title: `Ficha CRM - ${escapeHtml(c.firstName + ' ' + c.lastName)}`,
+                size: 'lg',
+                content: `
+                    <div class="space-y-6">
+                        <!-- Tarjeta Fidelización -->
+                        <div class="card-rw p-5 border-l-4 border-sky-500">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-bold text-slate-800"><i class="fas fa-id-card text-sky-500 mr-2"></i>Tarjeta de Fidelización</h4>
+                                <span class="badge ${'tier-' + (c.tier || 'bronze')}">${tierLabels[c.tier || 'bronze']}</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Número de Tarjeta</label>
+                                    <input type="text" id="crmCardNumber" class="input-rw font-mono" value="${escapeHtml(cardNum)}" placeholder="Ej: 1000000001" maxlength="10" inputmode="numeric">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nivel / Tier</label>
+                                    <select id="crmTier" class="input-rw">
+                                        <option value="bronze" ${(c.tier || 'bronze') === 'bronze' ? 'selected' : ''}>Bronce</option>
+                                        <option value="silver" ${c.tier === 'silver' ? 'selected' : ''}>Plata</option>
+                                        <option value="gold" ${c.tier === 'gold' ? 'selected' : ''}>Oro</option>
+                                        <option value="platinum" ${c.tier === 'platinum' ? 'selected' : ''}>Platino</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Billetera -->
+                        <div class="card-rw p-5 border-l-4 border-emerald-500">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-bold text-slate-800"><i class="fas fa-wallet text-emerald-500 mr-2"></i>Billetera</h4>
+                                <span class="text-2xl font-bold text-emerald-600">${fmtMoney(c.walletBalance)}</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Recargar Saldo (Admin)</label>
+                                    <input type="number" id="crmReloadAmount" class="input-rw" placeholder="Monto en FCFA" min="0" max="${CRM.maxReloadAmount}">
+                                    <p class="text-[10px] text-slate-400 mt-1">Máximo ${fmtMoney(CRM.maxReloadAmount)}</p>
+                                </div>
+                                <div class="flex items-end">
+                                    <button onclick="saveClientCRM('${c.id}')" class="px-4 py-2.5 rounded-xl btn-primary-rw text-sm font-medium w-full">
+                                        <i class="fas fa-save mr-2"></i>Guardar Cambios CRM
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Puntos -->
+                        <div class="card-rw p-5 border-l-4 border-amber-500">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-bold text-slate-800"><i class="fas fa-star text-amber-500 mr-2"></i>Puntos de Fidelidad</h4>
+                                <span class="text-2xl font-bold text-amber-600">${c.loyaltyPoints || 0} pts</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Añadir/Restar Puntos</label>
+                                    <input type="number" id="crmPointsChange" class="input-rw" placeholder="Use negativo para restar">
+                                </div>
+                                <div class="flex items-end gap-2">
+                                    <button onclick="adjustPoints('${c.id}', 1)" class="flex-1 px-3 py-2.5 rounded-xl btn-success-rw text-sm font-medium">
+                                        <i class="fas fa-plus mr-1"></i>Añadir
+                                    </button>
+                                    <button onclick="adjustPoints('${c.id}', -1)" class="flex-1 px-3 py-2.5 rounded-xl btn-secondary-rw text-sm font-medium">
+                                        <i class="fas fa-minus mr-1"></i>Restar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PIN de Seguridad -->
+                        <div class="card-rw p-5 border-l-4 border-rose-500">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-bold text-slate-800"><i class="fas fa-lock text-rose-500 mr-2"></i>PIN de Seguridad</h4>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">PIN de 4 dígitos (cliente)</label>
+                                    <input type="text" id="crmPin" class="input-rw text-center tracking-[0.5em] font-mono" value="" placeholder="••••" maxlength="4" inputmode="numeric">
+                                    <p class="text-[10px] text-slate-400 mt-1">Usado para confirmar transacciones en app y POS</p>
+                                </div>
+                                <div class="flex items-end gap-2">
+                                    <button onclick="saveClientPIN('${c.id}')" class="flex-1 px-3 py-2.5 rounded-xl btn-primary-rw text-sm font-medium">
+                                        <i class="fas fa-save mr-1"></i>Guardar PIN
+                                    </button>
+                                    <button onclick="printLoyaltyCard('${c.id}')" class="flex-1 px-3 py-2.5 rounded-xl btn-secondary-rw text-sm font-medium">
+                                        <i class="fas fa-print mr-1"></i>Imprimir Tarjeta
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            });
+        };
+
+        window.saveClientCRM = async function(clientId) {
+            const c = CRM.clients.find(x => x.id === clientId);
+            if (!c) return;
+            const cardNumber = document.getElementById('crmCardNumber').value.trim();
+            const tier = document.getElementById('crmTier').value;
+            const reloadAmount = parseFloat(document.getElementById('crmReloadAmount').value) || 0;
+
+            if (reloadAmount > CRM.maxReloadAmount) {
+                return showToast(`Máximo de recarga: ${fmtMoney(CRM.maxReloadAmount)}`, 'error');
+            }
+
+            const updates = { loyaltyCardNumber: cardNumber, tier, updatedAt: nowIso() };
+
+            if (reloadAmount > 0) {
+                const newBalance = (c.walletBalance || 0) + reloadAmount;
+                updates.walletBalance = newBalance;
+                await addWalletTransaction({
+                    clientId, type: 'reload', amount: reloadAmount,
+                    balanceAfter: newBalance, description: 'Recarga manual por admin',
+                    status: 'completed', createdAt: nowIso()
+                });
+                await logActivity('reload', `Recarga de ${fmtMoney(reloadAmount)} a ${c.firstName} ${c.lastName}`);
+            }
+
+            await updateClient(clientId, updates);
+            showToast('Datos CRM actualizados', 'success');
+            closeModal();
+            navigateTo('clients');
+        };
+
+        window.adjustPoints = async function(clientId, sign) {
+            const input = document.getElementById('crmPointsChange');
+            const val = parseInt(input.value) || 0;
+            if (val <= 0) return showToast('Ingrese una cantidad válida', 'error');
+            const c = CRM.clients.find(x => x.id === clientId);
+            if (!c) return;
+            const change = val * sign;
+            const newPoints = Math.max(0, (c.loyaltyPoints || 0) + change);
+            await updateClient(clientId, { loyaltyPoints: newPoints, updatedAt: nowIso() });
+            await logActivity(sign > 0 ? 'reload' : 'points_redeemed', `${sign > 0 ? 'Añadidos' : 'Restados'} ${val} puntos a ${c.firstName} ${c.lastName}`);
+            showToast(`Puntos ${sign > 0 ? 'añadidos' : 'restados'}: ${val}`, 'success');
+            document.getElementById('crmPointsChange').value = '';
+            // Refresh modal
+            openClientCRMModal(clientId);
+        };
+
+        // ==========================================
+        // WALLET / BILLETERA
+        // ==========================================
+        function renderWallet(container) {
+            const txs = [...CRM.walletTransactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const totalIn = txs.filter(t => ['reload','transfer_in'].includes(t.type)).reduce((s, t) => s + t.amount, 0);
+            const totalOut = txs.filter(t => ['purchase','transfer_out','coupon_purchase'].includes(t.type)).reduce((s, t) => s + t.amount, 0);
+
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Billetera</h2>
+                            <p class="text-slate-500 text-sm">Transacciones y movimientos</p>
+                        </div>
+                        <button onclick="openReloadRequestModal()" class="px-4 py-2.5 rounded-xl btn-primary-rw font-medium text-sm">
+                            <i class="fas fa-plus mr-2"></i>Nueva Recarga Manual
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="kpi-card bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <p class="text-white/80 text-sm">Total Entradas</p><p class="text-2xl font-bold">${fmtMoney(totalIn)}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-rose-500 to-pink-500">
+                            <p class="text-white/80 text-sm">Total Salidas</p><p class="text-2xl font-bold">${fmtMoney(totalOut)}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-sky-500 to-cyan-500">
+                            <p class="text-white/80 text-sm">Transacciones</p><p class="text-2xl font-bold">${txs.length}</p>
+                        </div>
+                    </div>
+
+                    <div class="card-rw overflow-hidden">
+                        <div class="p-4 border-b border-slate-100">
+                            <div class="search-box max-w-md">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Buscar transacción..." class="input-rw"
+                                    oninput="filterTransactions(this.value)">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table-rw">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Cliente</th>
+                                        <th>Tipo</th>
+                                        <th class="text-right">Monto</th>
+                                        <th class="text-right">Saldo después</th>
+                                        <th>Descripción</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${txs.slice(0, 100).map(t => renderTransactionRow(t)).join('')}
+                                    ${txs.length === 0 ? '<tr><td colspan="7" class="text-center py-8 text-slate-400">Sin transacciones</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderTransactionRow(t) {
+            const c = CRM.clients.find(x => x.id === t.clientId);
+            const clientName = c ? `${c.firstName} ${c.lastName}` : 'Desconocido';
+            const typeLabels = { reload: 'Recarga', purchase: 'Compra', transfer_in: 'Transferencia recibida', transfer_out: 'Transferencia enviada', coupon_purchase: 'Compra cupón', coupon_redeem: 'Canje cupón', discount: 'Descuento' };
+            const typeColors = { reload: 'badge-green', purchase: 'badge-amber', transfer_in: 'badge-blue', transfer_out: 'badge-purple', coupon_purchase: 'badge-amber', coupon_redeem: 'badge-purple', discount: 'badge-red' };
+            const isNegative = ['purchase','transfer_out','coupon_purchase','discount'].includes(t.type);
+            return `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${fmtDateTime(t.createdAt)}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-slate-700">${escapeHtml(clientName)}</td>
+                    <td class="px-6 py-4"><span class="badge ${typeColors[t.type] || 'badge-blue'}">${typeLabels[t.type] || t.type}</span></td>
+                    <td class="px-6 py-4 text-right font-mono font-medium ${isNegative ? 'text-rose-600' : 'text-emerald-600'}">${isNegative ? '-' : '+'}${fmtMoney(t.amount)}</td>
+                    <td class="px-6 py-4 text-right font-mono text-slate-600">${fmtMoney(t.balanceAfter)}</td>
+                    <td class="px-6 py-4 text-sm text-slate-500">${escapeHtml(t.description || '-')}</td>
+                    <td class="px-6 py-4"><span class="badge ${t.status === 'completed' ? 'badge-green' : t.status === 'pending' ? 'badge-amber' : 'badge-red'}">${t.status}</span></td>
+                </tr>`;
+        }
+
+        window.filterTransactions = function(q) {
+            // Simple re-render with filter
+            const main = document.getElementById('mainContent');
+            const txs = [...CRM.walletTransactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const filtered = q ? txs.filter(t => {
+                const c = CRM.clients.find(x => x.id === t.clientId);
+                const name = c ? `${c.firstName} ${c.lastName}` : '';
+                return name.toLowerCase().includes(q.toLowerCase()) || (t.description || '').toLowerCase().includes(q.toLowerCase());
+            }) : txs;
+            // Re-render is tricky; for now just show toast and re-navigate
+            if (!q) return;
+            // Replace tbody only for performance
+            const tbody = main.querySelector('tbody');
+            if (tbody) {
+                tbody.innerHTML = filtered.slice(0, 100).map(t => renderTransactionRow(t)).join('') +
+                    (filtered.length === 0 ? '<tr><td colspan="7" class="text-center py-8 text-slate-400">Sin coincidencias</td></tr>' : '');
+            }
+        };
+
+        // ==========================================
+        // TRANSFERENCIAS
+        // ==========================================
+        window.openTransferModal = function(fromClientId) {
+            const from = CRM.clients.find(c => c.id === fromClientId);
+            if (!from) return;
+            const others = CRM.clients.filter(c => c.id !== fromClientId);
+            openModal({
+                title: `Transferir desde ${escapeHtml(from.firstName + ' ' + from.lastName)}`,
+                size: 'md',
+                content: `
+                    <div class="space-y-4">
+                        <div class="bg-slate-50 rounded-xl p-4 text-center">
+                            <p class="text-sm text-slate-500">Saldo disponible</p>
+                            <p class="text-2xl font-bold text-emerald-600">${fmtMoney(from.walletBalance)}</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Cliente destino</label>
+                            <select id="transferToClient" class="input-rw">
+                                <option value="">Seleccione cliente...</option>
+                                ${others.map(c => `<option value="${c.id}">${escapeHtml(c.firstName + ' ' + c.lastName)} (${c.phone || ''})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Monto a transferir</label>
+                            <input type="number" id="transferAmount" class="input-rw" placeholder="FCFA" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Descripción (opcional)</label>
+                            <input type="text" id="transferDesc" class="input-rw" placeholder="Ej: Pago de deuda">
+                        </div>
+                    </div>
+                `,
+                footer: `
+                    <button onclick="closeModal()" class="px-4 py-2 rounded-xl btn-secondary-rw text-sm mr-2">Cancelar</button>
+                    <button onclick="executeTransfer('${fromClientId}')" class="px-4 py-2 rounded-xl btn-primary-rw text-sm font-medium">
+                        <i class="fas fa-exchange-alt mr-2"></i>Transferir
+                    </button>
+                `
+            });
+        };
+
+        window.executeTransfer = async function(fromClientId) {
+            const toId = document.getElementById('transferToClient').value;
+            const amount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            const desc = document.getElementById('transferDesc').value.trim();
+            const from = CRM.clients.find(c => c.id === fromClientId);
+            const to = CRM.clients.find(c => c.id === toId);
+
+            if (!toId || !to) return showToast('Seleccione un cliente destino', 'error');
+            if (amount <= 0) return showToast('Ingrese un monto válido', 'error');
+            if ((from.walletBalance || 0) < amount) return showToast('Saldo insuficiente', 'error');
+
+            const fromBalance = (from.walletBalance || 0) - amount;
+            const toBalance = (to.walletBalance || 0) + amount;
+
+            await updateClient(fromClientId, { walletBalance: fromBalance, updatedAt: nowIso() });
+            await updateClient(toId, { walletBalance: toBalance, updatedAt: nowIso() });
+
+            await addWalletTransaction({
+                clientId: fromClientId, type: 'transfer_out', amount,
+                balanceAfter: fromBalance, description: desc || `Transferencia a ${to.firstName} ${to.lastName}`,
+                relatedClientId: toId, status: 'completed', createdAt: nowIso()
+            });
+            await addWalletTransaction({
+                clientId: toId, type: 'transfer_in', amount,
+                balanceAfter: toBalance, description: desc || `Transferencia de ${from.firstName} ${from.lastName}`,
+                relatedClientId: fromClientId, status: 'completed', createdAt: nowIso()
+            });
+
+            await logActivity('transfer', `Transferencia de ${fmtMoney(amount)} de ${from.firstName} a ${to.firstName}`);
+            showToast('Transferencia realizada', 'success');
+            closeModal();
+            updateTotalWalletBalance();
+            if (CRM.currentPage === 'clients' || CRM.currentPage === 'wallet') navigateTo(CRM.currentPage);
+        };
+
+        // ==========================================
+        // CUPONES
+        // ==========================================
+        function renderCoupons(container) {
+            const coupons = CRM.crmCoupons;
+            const purchases = CRM.crmCouponPurchases;
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Cupones</h2>
+                            <p class="text-slate-500 text-sm">${coupons.length} cupones creados · ${purchases.filter(p => p.status === 'active').length} activos en clientes</p>
+                        </div>
+                        <button onclick="openCouponModal()" class="px-4 py-2.5 rounded-xl btn-primary-rw font-medium text-sm">
+                            <i class="fas fa-plus mr-2"></i>Nuevo Cupón
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="kpi-card bg-gradient-to-br from-pink-500 to-rose-500">
+                            <p class="text-white/80 text-sm">Cupones Creados</p><p class="text-2xl font-bold">${coupons.length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-indigo-500 to-violet-500">
+                            <p class="text-white/80 text-sm">Comprados</p><p class="text-2xl font-bold">${purchases.length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <p class="text-white/80 text-sm">Activos</p><p class="text-2xl font-bold">${purchases.filter(p => p.status === 'active').length}</p>
+                        </div>
+                    </div>
+
+                    <div class="card-rw overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="table-rw">
+                                <thead>
+                                    <tr><th>Código</th><th>Nombre</th><th>Descuento</th><th>Usos</th><th>Válido</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${coupons.map(c => renderCouponRow(c)).join('')}
+                                    ${coupons.length === 0 ? '<tr><td colspan="7" class="text-center py-8 text-slate-400">Sin cupones creados</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderCouponRow(c) {
+            const now = new Date().toISOString().split('T')[0];
+            const isValid = c.isActive && c.validFrom <= now && c.validUntil >= now;
+            const discountText = c.discountType === 'percentage' ? `${c.discountValue}%` : fmtMoney(c.discountValue);
+            return `
+                <tr>
+                    <td class="px-6 py-4 font-mono font-medium text-slate-800">${escapeHtml(c.code)}</td>
+                    <td class="px-6 py-4 text-sm text-slate-700">${escapeHtml(c.name)}</td>
+                    <td class="px-6 py-4"><span class="badge badge-purple">${discountText}</span></td>
+                    <td class="px-6 py-4 text-sm text-slate-600">${c.usesCount || 0} / ${c.maxUses || '∞'}</td>
+                    <td class="px-6 py-4 text-sm text-slate-500">${fmtDate(c.validFrom)} - ${fmtDate(c.validUntil)}</td>
+                    <td class="px-6 py-4"><span class="badge ${isValid ? 'badge-green' : 'badge-red'}">${isValid ? 'Activo' : 'Inactivo'}</span></td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="printCoupon('${c.id}')" class="p-2 rounded-lg hover:bg-sky-50 text-sky-600" title="Imprimir cupón">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <button onclick="toggleCouponActive('${c.id}')" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="Activar/Desactivar">
+                            <i class="fas ${c.isActive ? 'fa-toggle-on text-emerald-500' : 'fa-toggle-off'}"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        }
+
+        window.openCouponModal = function() {
+            openModal({
+                title: 'Nuevo Cupón',
+                size: 'md',
+                content: `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Código</label>
+                                <input type="text" id="cpCode" class="input-rw font-mono uppercase" placeholder="DESCUENTO10">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Nombre</label>
+                                <input type="text" id="cpName" class="input-rw" placeholder="Ej: 10% de descuento">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Descripción</label>
+                            <input type="text" id="cpDesc" class="input-rw" placeholder="Descripción del cupón">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Tipo</label>
+                                <select id="cpType" class="input-rw">
+                                    <option value="percentage">Porcentaje (%)</option>
+                                    <option value="fixed">Monto fijo (FCFA)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Valor</label>
+                                <input type="number" id="cpValue" class="input-rw" placeholder="10">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Compra mínima (FCFA)</label>
+                                <input type="number" id="cpMin" class="input-rw" value="0">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Máximos usos</label>
+                                <input type="number" id="cpMax" class="input-rw" value="100">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Válido desde</label>
+                                <input type="date" id="cpFrom" class="input-rw" value="${new Date().toISOString().split('T')[0]}">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Válido hasta</label>
+                                <input type="date" id="cpUntil" class="input-rw" value="${new Date(Date.now() + 30*86400000).toISOString().split('T')[0]}">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                footer: `
+                    <button onclick="closeModal()" class="px-4 py-2 rounded-xl btn-secondary-rw text-sm mr-2">Cancelar</button>
+                    <button onclick="saveCoupon()" class="px-4 py-2 rounded-xl btn-primary-rw text-sm font-medium">Guardar Cupón</button>
+                `
+            });
+        };
+
+        window.saveCoupon = async function() {
+            const code = document.getElementById('cpCode').value.trim().toUpperCase();
+            const name = document.getElementById('cpName').value.trim();
+            const description = document.getElementById('cpDesc').value.trim();
+            let discountType = document.getElementById('cpType').value;
+            const discountValue = parseFloat(document.getElementById('cpValue').value) || 0;
+            const minPurchase = parseFloat(document.getElementById('cpMin').value) || 0;
+            const maxUses = parseInt(document.getElementById('cpMax').value) || 0;
+            const validFrom = document.getElementById('cpFrom').value;
+            const validUntil = document.getElementById('cpUntil').value;
+
+            if (!code || !name || discountValue <= 0) return showToast('Complete los campos obligatorios', 'error');
+            if (discountType === 'fixed') discountType = 'fixed_amount';
+
+            const coupon = {
+                id: genId(), code, name, description, discountType, discountValue,
+                minPurchase, maxUses, usesCount: 0, validFrom, validUntil,
+                isActive: true, createdAt: nowIso()
+            };
+
+            CRM.crmCoupons.push(coupon);
+            await saveToCloud('crmCoupons', coupon);
+            await logActivity('coupon_used', `Cupón creado: ${code}`);
+            showToast('Cupón creado', 'success');
+            closeModal();
+            navigateTo('coupons');
+        };
+
+        window.toggleCouponActive = async function(couponId) {
+            const c = CRM.crmCoupons.find(x => x.id === couponId);
+            if (!c) return;
+            c.isActive = !c.isActive;
+            await saveToCloud('crmCoupons', c);
+            showToast(`Cupón ${c.isActive ? 'activado' : 'desactivado'}`, 'success');
+            navigateTo('coupons');
+        };
+
+        // ==========================================
+        // CAMPAÑAS DE DESCUENTO
+        // ==========================================
+        function renderCampaigns(container) {
+            const now = new Date().toISOString().split('T')[0];
+            const campaigns = CRM.discountCampaigns;
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Campañas de Descuento</h2>
+                            <p class="text-slate-500 text-sm">Descuentos exclusivos por fechas</p>
+                        </div>
+                        <button onclick="openCampaignModal()" class="px-4 py-2.5 rounded-xl btn-primary-rw font-medium text-sm">
+                            <i class="fas fa-plus mr-2"></i>Nueva Campaña
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="kpi-card bg-gradient-to-br from-indigo-500 to-purple-500">
+                            <p class="text-white/80 text-sm">Campañas</p><p class="text-2xl font-bold">${campaigns.length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <p class="text-white/80 text-sm">Vigentes</p><p class="text-2xl font-bold">${campaigns.filter(c => c.isActive && c.startDate <= now && c.endDate >= now).length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-amber-500 to-orange-500">
+                            <p class="text-white/80 text-sm">Próximas</p><p class="text-2xl font-bold">${campaigns.filter(c => c.startDate > now).length}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${campaigns.map(c => renderCampaignCard(c)).join('')}
+                        ${campaigns.length === 0 ? '<div class="md:col-span-2 empty-state card-rw py-12"><i class="fas fa-percent text-3xl mb-2"></i><p>Sin campañas creadas</p></div>' : ''}
+                    </div>
+                </div>`;
+        }
+
+        function renderCampaignCard(c) {
+            const now = new Date().toISOString().split('T')[0];
+            const isActive = c.isActive && c.startDate <= now && c.endDate >= now;
+            const isFuture = c.startDate > now;
+            const statusClass = isActive ? 'badge-green' : isFuture ? 'badge-blue' : 'badge-red';
+            const statusText = isActive ? 'Vigente' : isFuture ? 'Próxima' : 'Finalizada';
+            const discountText = (c.campaignType || c.discountType) === 'percentage' ? `${c.discountValue}%` : fmtMoney(c.discountValue);
+            const tierLabels = { bronze: 'Bronce', silver: 'Plata', gold: 'Oro', platinum: 'Platino' };
+            const targetText = (c.targetTiers || []).map(t => tierLabels[t] || t).join(', ') || 'Todos';
+            return `
+                <div class="card-rw p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h4 class="font-bold text-slate-800">${escapeHtml(c.name)}</h4>
+                            <p class="text-xs text-slate-400">${escapeHtml(c.description || '')}</p>
+                        </div>
+                        <span class="badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="flex items-center gap-4 mb-3 text-sm">
+                        <span class="font-bold text-indigo-600 text-lg">${discountText}</span>
+                        <span class="text-slate-400">|</span>
+                        <span class="text-slate-600"><i class="far fa-calendar mr-1"></i>${fmtDate(c.startDate)} - ${fmtDate(c.endDate)}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-500">Niveles: ${targetText}</span>
+                        <div class="flex gap-1">
+                            <button onclick="toggleCampaignActive('${c.id}')" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600" title="Activar/Desactivar">
+                                <i class="fas ${c.isActive ? 'fa-toggle-on text-emerald-500' : 'fa-toggle-off'}"></i>
+                            </button>
+                            <button onclick="deleteCampaign('${c.id}')" class="p-2 rounded-lg hover:bg-red-50 text-red-500" title="Eliminar">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        window.openCampaignModal = function() {
+            openModal({
+                title: 'Nueva Campaña de Descuento',
+                size: 'md',
+                content: `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Nombre</label>
+                            <input type="text" id="campName" class="input-rw" placeholder="Ej: Black Friday">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Descripción</label>
+                            <input type="text" id="campDesc" class="input-rw" placeholder="Descripción">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Tipo</label>
+                                <select id="campType" class="input-rw">
+                                    <option value="percentage">Porcentaje (%)</option>
+                                    <option value="fixed">Monto fijo (FCFA)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Valor</label>
+                                <input type="number" id="campValue" class="input-rw" placeholder="20">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Desde</label>
+                                <input type="date" id="campFrom" class="input-rw" value="${new Date().toISOString().split('T')[0]}">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Hasta</label>
+                                <input type="date" id="campUntil" class="input-rw" value="${new Date(Date.now() + 7*86400000).toISOString().split('T')[0]}">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Niveles objetivo (dejar vacío para todos)</label>
+                            <div class="flex gap-2 flex-wrap">
+                                ${['bronze','silver','gold','platinum'].map(t => `
+                                    <label class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg cursor-pointer select-none">
+                                        <input type="checkbox" class="campTier" value="${t}">
+                                        <span class="text-sm capitalize">${t}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Compra mínima (FCFA)</label>
+                            <input type="number" id="campMin" class="input-rw" value="0">
+                        </div>
+                    </div>
+                `,
+                footer: `
+                    <button onclick="closeModal()" class="px-4 py-2 rounded-xl btn-secondary-rw text-sm mr-2">Cancelar</button>
+                    <button onclick="saveCampaign()" class="px-4 py-2 rounded-xl btn-primary-rw text-sm font-medium">Guardar Campaña</button>
+                `
+            });
+        };
+
+        window.saveCampaign = async function() {
+            const name = document.getElementById('campName').value.trim();
+            const description = document.getElementById('campDesc').value.trim();
+            let discountType = document.getElementById('campType').value;
+            const discountValue = parseFloat(document.getElementById('campValue').value) || 0;
+            const startDate = document.getElementById('campFrom').value;
+            const endDate = document.getElementById('campUntil').value;
+            const minPurchase = parseFloat(document.getElementById('campMin').value) || 0;
+            const targetTiers = Array.from(document.querySelectorAll('.campTier:checked')).map(cb => cb.value);
+
+            if (!name || discountValue <= 0 || !startDate || !endDate) return showToast('Complete los campos obligatorios', 'error');
+            if (discountType === 'fixed') discountType = 'fixed_amount';
+
+            const campaign = {
+                id: genId(), name, description, campaignType: discountType, discountValue,
+                startDate, endDate, isActive: true, targetTiers, minPurchase, createdAt: nowIso()
+            };
+
+            CRM.discountCampaigns.push(campaign);
+            await saveToCloud('discountCampaigns', campaign);
+            await logActivity('profile_update', `Campaña creada: ${name}`);
+            showToast('Campaña creada', 'success');
+            closeModal();
+            navigateTo('campaigns');
+        };
+
+        window.toggleCampaignActive = async function(id) {
+            const c = CRM.discountCampaigns.find(x => x.id === id);
+            if (!c) return;
+            c.isActive = !c.isActive;
+            // Normalize: ensure campaignType, remove discountType (old schema legacy)
+            if (c.discountType !== undefined && c.campaignType === undefined) {
+                c.campaignType = c.discountType;
+            }
+            delete c.discountType;
+            await saveToCloud('discountCampaigns', c);
+            showToast(`Campaña ${c.isActive ? 'activada' : 'desactivada'}`, 'success');
+            navigateTo('campaigns');
+        };
+
+        window.deleteCampaign = async function(id) {
+            if (!confirm('¿Eliminar esta campaña?')) return;
+            CRM.discountCampaigns = CRM.discountCampaigns.filter(x => x.id !== id);
+            await deleteFromCloud('discountCampaigns', id);
+            showToast('Campaña eliminada', 'success');
+            navigateTo('campaigns');
+        };
+
+        // ==========================================
+        // SOLICITUDES DE RECARGA
+        // ==========================================
+        function renderRequests(container) {
+            const reqs = [...CRM.reloadRequests].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+            const pending = reqs.filter(r => r.status === 'pending');
+            const approved = reqs.filter(r => r.status === 'approved');
+            const rejected = reqs.filter(r => r.status === 'rejected');
+
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold gradient-text">Solicitudes de Recarga</h2>
+                            <p class="text-slate-500 text-sm">${pending.length} pendientes · ${approved.length} aprobadas · ${rejected.length} rechazadas</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="kpi-card bg-gradient-to-br from-amber-500 to-orange-500">
+                            <p class="text-white/80 text-sm">Pendientes</p><p class="text-2xl font-bold">${pending.length}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <p class="text-white/80 text-sm">Aprobadas</p><p class="text-2xl font-bold">${fmtMoney(approved.reduce((s, r) => s + r.amount, 0))}</p>
+                        </div>
+                        <div class="kpi-card bg-gradient-to-br from-rose-500 to-pink-500">
+                            <p class="text-white/80 text-sm">Rechazadas</p><p class="text-2xl font-bold">${rejected.length}</p>
+                        </div>
+                    </div>
+
+                    <div class="card-rw overflow-hidden">
+                        <div class="flex border-b border-slate-100">
+                            <button class="tab-btn active" onclick="switchRequestTab(this, 'pending')">Pendientes</button>
+                            <button class="tab-btn" onclick="switchRequestTab(this, 'approved')">Aprobadas</button>
+                            <button class="tab-btn" onclick="switchRequestTab(this, 'rejected')">Rechazadas</button>
+                            <button class="tab-btn" onclick="switchRequestTab(this, 'all')">Todas</button>
+                        </div>
+                        <div id="requestsTableContainer" class="overflow-x-auto">
+                            ${renderRequestsTable(pending, 'pending')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderRequestsTable(reqs, filter) {
+            return `
+                <table class="table-rw">
+                    <thead>
+                        <tr><th>Fecha</th><th>Cliente</th><th class="text-right">Monto</th><th>Notas</th><th class="text-right">Acciones</th></tr>
+                    </thead>
+                    <tbody>
+                        ${reqs.map(r => renderRequestRow(r, filter)).join('')}
+                        ${reqs.length === 0 ? '<tr><td colspan="5" class="text-center py-8 text-slate-400">Sin solicitudes</td></tr>' : ''}
+                    </tbody>
+                </table>`;
+        }
+
+        function renderRequestRow(r, filter) {
+            const c = CRM.clients.find(x => x.id === r.clientId);
+            const clientName = c ? `${c.firstName} ${c.lastName}` : 'Desconocido';
+            const isPending = r.status === 'pending';
+            return `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${fmtDateTime(r.requestedAt)}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-slate-700">${escapeHtml(clientName)}</td>
+                    <td class="px-6 py-4 text-right font-mono font-bold text-slate-800">${fmtMoney(r.amount)}</td>
+                    <td class="px-6 py-4 text-sm text-slate-500">${escapeHtml(r.notes || '-')}</td>
+                    <td class="px-6 py-4 text-right">
+                        ${isPending ? `
+                            <button onclick="approveRequest('${r.id}')" class="px-3 py-1.5 rounded-lg btn-success-rw text-xs font-medium mr-1">Aprobar</button>
+                            <button onclick="rejectRequest('${r.id}')" class="px-3 py-1.5 rounded-lg btn-danger-rw text-xs font-medium">Rechazar</button>
+                        ` : `<span class="badge ${r.status === 'approved' ? 'badge-green' : 'badge-red'}">${r.status === 'approved' ? 'Aprobada' : 'Rechazada'}</span>`}
+                    </td>
+                </tr>`;
+        }
+
+        window.switchRequestTab = function(btn, filter) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const reqs = [...CRM.reloadRequests].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+            const filtered = filter === 'all' ? reqs : reqs.filter(r => r.status === filter);
+            document.getElementById('requestsTableContainer').innerHTML = renderRequestsTable(filtered, filter);
+        };
+
+        window.approveRequest = async function(requestId) {
+            const req = CRM.reloadRequests.find(r => r.id === requestId);
+            if (!req || req.status !== 'pending') return;
+            const c = CRM.clients.find(x => x.id === req.clientId);
+            if (!c) return showToast('Cliente no encontrado', 'error');
+            if (req.amount > CRM.maxReloadAmount) return showToast(`Máximo ${fmtMoney(CRM.maxReloadAmount)}`, 'error');
+
+            const newBalance = (c.walletBalance || 0) + req.amount;
+            await updateClient(req.clientId, { walletBalance: newBalance, updatedAt: nowIso() });
+
+            req.status = 'approved';
+            req.approvedBy = CRM.user?.uid;
+            req.approvedAt = nowIso();
+            await saveToCloud('reloadRequests', req);
+
+            await addWalletTransaction({
+                clientId: req.clientId, type: 'reload', amount: req.amount,
+                balanceAfter: newBalance, description: 'Recarga aprobada desde solicitud',
+                status: 'completed', createdAt: nowIso()
+            });
+
+            await logActivity('reload', `Recarga aprobada: ${fmtMoney(req.amount)} a ${c.firstName} ${c.lastName}`);
+            showToast('Solicitud aprobada', 'success');
+            navigateTo('requests');
+            updateTotalWalletBalance();
+        };
+
+        window.rejectRequest = async function(requestId) {
+            const req = CRM.reloadRequests.find(r => r.id === requestId);
+            if (!req || req.status !== 'pending') return;
+            req.status = 'rejected';
+            req.approvedBy = CRM.user?.uid;
+            req.approvedAt = nowIso();
+            await saveToCloud('reloadRequests', req);
+            showToast('Solicitud rechazada', 'warning');
+            navigateTo('requests');
+        };
+
+        // ==========================================
+        // HISTORIAL
+        // ==========================================
+        function renderHistory(container) {
+            const txs = [...CRM.walletTransactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold gradient-text">Historial CRM</h2>
+                        <p class="text-slate-500 text-sm">Todas las operaciones registradas</p>
+                    </div>
+                    <div class="card-rw overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
+                            <div class="search-box flex-1 max-w-md">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Buscar..." class="input-rw" oninput="filterHistory(this.value)">
+                            </div>
+                            <select class="input-rw w-auto" onchange="filterHistoryByType(this.value)">
+                                <option value="">Todos los tipos</option>
+                                <option value="reload">Recargas</option>
+                                <option value="transfer">Transferencias</option>
+                                <option value="purchase">Compras</option>
+                                <option value="coupon">Cupones</option>
+                            </select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table-rw">
+                                <thead>
+                                    <tr><th>Fecha</th><th>Cliente</th><th>Tipo</th><th class="text-right">Monto</th><th>Descripción</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${txs.slice(0, 200).map(t => renderTransactionRow(t)).join('')}
+                                    ${txs.length === 0 ? '<tr><td colspan="5" class="text-center py-8 text-slate-400">Sin historial</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        window.filterHistory = function(q) {
+            const main = document.getElementById('mainContent');
+            const txs = [...CRM.walletTransactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const filtered = q ? txs.filter(t => {
+                const c = CRM.clients.find(x => x.id === t.clientId);
+                const name = c ? `${c.firstName} ${c.lastName}` : '';
+                return name.toLowerCase().includes(q.toLowerCase()) || (t.description || '').toLowerCase().includes(q.toLowerCase());
+            }) : txs;
+            const tbody = main.querySelector('tbody');
+            if (tbody) tbody.innerHTML = filtered.slice(0, 200).map(t => renderTransactionRow(t)).join('') + (filtered.length === 0 ? '<tr><td colspan="5" class="text-center py-8 text-slate-400">Sin coincidencias</td></tr>' : '');
+        };
+
+        window.filterHistoryByType = function(type) {
+            const main = document.getElementById('mainContent');
+            let txs = [...CRM.walletTransactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            if (type === 'transfer') txs = txs.filter(t => t.type.includes('transfer'));
+            else if (type) txs = txs.filter(t => t.type === type);
+            const tbody = main.querySelector('tbody');
+            if (tbody) tbody.innerHTML = txs.slice(0, 200).map(t => renderTransactionRow(t)).join('') + (txs.length === 0 ? '<tr><td colspan="5" class="text-center py-8 text-slate-400">Sin coincidencias</td></tr>' : '');
+        };
+
+        window.viewClientHistory = function(clientId) {
+            const c = CRM.clients.find(x => x.id === clientId);
+            if (!c) return;
+            const txs = CRM.walletTransactions.filter(t => t.clientId === clientId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            openModal({
+                title: `Historial - ${escapeHtml(c.firstName + ' ' + c.lastName)}`,
+                size: 'lg',
+                content: `
+                    <div class="space-y-4">
+                        <div class="bg-slate-50 rounded-xl p-4 flex justify-around text-center">
+                            <div><p class="text-xs text-slate-400">Billetera</p><p class="text-xl font-bold text-emerald-600">${fmtMoney(c.walletBalance)}</p></div>
+                            <div><p class="text-xs text-slate-400">Puntos</p><p class="text-xl font-bold text-amber-600">${c.loyaltyPoints || 0}</p></div>
+                            <div><p class="text-xs text-slate-400">Transacciones</p><p class="text-xl font-bold text-sky-600">${txs.length}</p></div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table-rw">
+                                <thead><tr><th>Fecha</th><th>Tipo</th><th class="text-right">Monto</th><th>Descripción</th></tr></thead>
+                                <tbody>
+                                    ${txs.map(t => renderTransactionRow(t)).join('')}
+                                    ${txs.length === 0 ? '<tr><td colspan="4" class="text-center py-8 text-slate-400">Sin transacciones</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `
+            });
+        };
+
+        // ==========================================
+        // CLOUD OPERATIONS
+        // ==========================================
+        async function saveToCloud(collectionName, docData) {
+            if (!CRM.tenantId) return;
+            const scopeId = CRM.tenantId;
+            try {
+                await setDoc(doc(db, 'rw_tenants', CRM.tenantId, 'users', scopeId, collectionName, docData.id), docData);
+            } catch (e) {
+                console.warn(`Error guardando ${collectionName}:`, e);
+                showToast('Error de sincronización', 'error');
+            }
+        }
+
+        async function deleteFromCloud(collectionName, docId) {
+            if (!CRM.tenantId) return;
+            const scopeId = CRM.tenantId;
+            try {
+                await deleteDoc(doc(db, 'rw_tenants', CRM.tenantId, 'users', scopeId, collectionName, docId));
+            } catch (e) {
+                console.warn(`Error eliminando ${collectionName}:`, e);
+            }
+        }
+
+        async function updateClient(clientId, updates) {
+            const idx = CRM.clients.findIndex(c => c.id === clientId);
+            if (idx >= 0) {
+                CRM.clients[idx] = { ...CRM.clients[idx], ...updates };
+                // Also update in software.html localStorage for consistency
+                try {
+                    const key = `rw_${CRM.tenantId}_clients`;
+                    const raw = localStorage.getItem(key);
+                    let arr = raw ? JSON.parse(raw) : [];
+                    const i2 = arr.findIndex(c => c.id === clientId);
+                    if (i2 >= 0) { arr[i2] = { ...arr[i2], ...updates }; }
+                    else { arr.push(CRM.clients[idx]); }
+                    localStorage.setItem(key, JSON.stringify(arr));
+                } catch (e) {}
+                await saveToCloud('clients', CRM.clients[idx]);
+                // Notify parent window so software.html can refresh
+                try { window.parent.postMessage({ type: 'CRM_CLIENT_UPDATED', clientId }, window.location.origin); } catch (e) {}
+            }
+        }
+
+        async function addWalletTransaction(txData) {
+            CRM.walletTransactions.push(txData);
+            // Strip relatedClientId — column doesn't exist in current DB schema
+            const { relatedClientId, ...clean } = txData;
+            await saveToCloud('walletTransactions', clean);
+        }
+
+        async function logActivity(action, description) {
+            const act = { id: genId(), action, description, createdAt: nowIso() };
+            CRM.crmActivities.unshift(act);
+            await saveToCloud('crmActivities', act);
+        }
+
+        // ==========================================
+        // MODAL SYSTEM
+        // ==========================================
+        window.openModal = function({ title, content, footer, size = 'md' }) {
+            const container = document.getElementById('modalContainer');
+            container.innerHTML = `
+                <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+                    <div class="modal-content ${size}">
+                        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+                            <h3 class="font-bold text-slate-800">${title}</h3>
+                            <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="p-5">${content}</div>
+                        ${footer ? `<div class="p-5 border-t border-slate-100 flex justify-end">${footer}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
+        };
+
+        window.closeModal = function() {
+            document.getElementById('modalContainer').classList.add('hidden');
+            document.getElementById('modalContainer').innerHTML = '';
+        };
+
+        // ==========================================
+        // NEW CLIENT CRM MODAL
+        // ==========================================
+        window.openClientModal = function() {
+            openModal({
+                title: 'Nuevo Cliente CRM',
+                size: 'md',
+                content: `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">Nombre *</label><input type="text" id="newCliFirstName" class="input-rw"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">Apellido *</label><input type="text" id="newCliLastName" class="input-rw"></div>
+                        </div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">Teléfono</label><input type="tel" id="newCliPhone" class="input-rw" placeholder="+240 XXX XXX XXX"></div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">Email</label><input type="email" id="newCliEmail" class="input-rw"></div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Número de Tarjeta</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="newCliCard" class="input-rw font-mono flex-1" placeholder="1000000001" maxlength="10" inputmode="numeric">
+                                <button onclick="generateCardNumber()" class="px-3 py-2 rounded-xl btn-secondary-rw text-sm whitespace-nowrap" title="Generar número automático">
+                                    <i class="fas fa-magic mr-1"></i>Generar
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Nivel inicial</label>
+                            <select id="newCliTier" class="input-rw">
+                                <option value="bronze">Bronce</option>
+                                <option value="silver">Plata</option>
+                                <option value="gold">Oro</option>
+                                <option value="platinum">Platino</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Saldo inicial (FCFA)</label>
+                            <input type="number" id="newCliBalance" class="input-rw" value="0" min="0">
+                        </div>
+                    </div>
+                `,
+                footer: `
+                    <button onclick="closeModal()" class="px-4 py-2 rounded-xl btn-secondary-rw text-sm mr-2">Cancelar</button>
+                    <button onclick="saveNewClient()" class="px-4 py-2 rounded-xl btn-primary-rw text-sm font-medium">Crear Cliente</button>
+                `
+            });
+        };
+
+        window.generateCardNumber = function() {
+            const existing = CRM.clients.map(c => c.loyaltyCardNumber).filter(Boolean);
+            let maxNum = 1000000000;
+            existing.forEach(num => {
+                const n = parseInt(num);
+                if (!isNaN(n) && n > maxNum) maxNum = n;
+            });
+            document.getElementById('newCliCard').value = String(maxNum + 1);
+        };
+
+        window.saveNewClient = async function() {
+            const firstName = document.getElementById('newCliFirstName').value.trim();
+            const lastName = document.getElementById('newCliLastName').value.trim();
+            const phone = document.getElementById('newCliPhone').value.trim();
+            const email = document.getElementById('newCliEmail').value.trim();
+            const card = document.getElementById('newCliCard').value.trim();
+            const tier = document.getElementById('newCliTier').value;
+            const balance = parseFloat(document.getElementById('newCliBalance').value) || 0;
+
+            if (!firstName || !lastName) return showToast('Nombre y apellido son obligatorios', 'error');
+            if (balance > CRM.maxReloadAmount) return showToast(`Máximo ${fmtMoney(CRM.maxReloadAmount)}`, 'error');
+
+            const client = {
+                id: genId(), firstName, lastName, phone, email,
+                loyaltyCardNumber: card, tier, walletBalance: balance, loyaltyPoints: 0,
+                credit: 0, purchases: 0, createdAt: nowIso(), updatedAt: nowIso()
+            };
+
+            CRM.clients.push(client);
+            await saveToCloud('clients', client);
+            // Also sync to software.html localStorage
+            try {
+                const key = `rw_${CRM.tenantId}_clients`;
+                const raw = localStorage.getItem(key);
+                const arr = raw ? JSON.parse(raw) : [];
+                arr.push(client);
+                localStorage.setItem(key, JSON.stringify(arr));
+            } catch (e) {}
+
+            if (balance > 0) {
+                await addWalletTransaction({
+                    clientId: client.id, type: 'reload', amount: balance,
+                    balanceAfter: balance, description: 'Saldo inicial',
+                    status: 'completed', createdAt: nowIso()
+                });
+            }
+
+            await logActivity('profile_update', `Cliente CRM creado: ${firstName} ${lastName}`);
+            showToast('Cliente creado', 'success');
+            closeModal();
+            navigateTo('clients');
+            updateTotalWalletBalance();
+        };
+
+        // ==========================================
+        // RELOAD REQUEST MODAL (manual admin)
+        // ==========================================
+        window.openReloadRequestModal = function() {
+            openModal({
+                title: 'Nueva Recarga Manual',
+                size: 'md',
+                content: `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Cliente</label>
+                            <select id="manualReloadClient" class="input-rw">
+                                <option value="">Seleccione...</option>
+                                ${CRM.clients.map(c => `<option value="${c.id}">${escapeHtml(c.firstName + ' ' + c.lastName)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Monto (FCFA)</label>
+                            <input type="number" id="manualReloadAmount" class="input-rw" placeholder="50000" min="1" max="${CRM.maxReloadAmount}">
+                            <p class="text-[10px] text-slate-400 mt-1">Máximo permitido: ${fmtMoney(CRM.maxReloadAmount)}</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Descripción</label>
+                            <input type="text" id="manualReloadDesc" class="input-rw" placeholder="Recarga manual por admin">
+                        </div>
+                    </div>
+                `,
+                footer: `
+                    <button onclick="closeModal()" class="px-4 py-2 rounded-xl btn-secondary-rw text-sm mr-2">Cancelar</button>
+                    <button onclick="saveManualReload()" class="px-4 py-2 rounded-xl btn-primary-rw text-sm font-medium">Recargar</button>
+                `
+            });
+        };
+
+        window.saveClientPIN = async function(clientId) {
+            const pin = document.getElementById('crmPin').value.trim();
+            if (!/^\d{4}$/.test(pin)) return showToast('El PIN debe tener exactamente 4 dígitos', 'error');
+            await updateClient(clientId, { pinHash: pin, updatedAt: nowIso() });
+            showToast('PIN guardado', 'success');
+        };
+
+        window.printLoyaltyCard = function(clientId) {
+            const c = CRM.clients.find(x => x.id === clientId);
+            if (!c || !c.loyaltyCardNumber) return showToast('El cliente no tiene tarjeta asignada', 'error');
+            const tierLabels = { bronze: 'BRONCE', silver: 'PLATA', gold: 'ORO', platinum: 'PLATINO' };
+            const tierColors = { bronze: '#b87333', silver: '#64748b', gold: '#d97706', platinum: '#7c3aed' };
+            const w = window.open('', '_blank', 'width=400,height=600');
+            w.document.write(`
+                <html><head><title>Tarjeta ${c.loyaltyCardNumber}</title>
+                <style>
+                    body { font-family: Arial,sans-serif; margin: 0; padding: 20px; background: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                    .card { width: 340px; background: linear-gradient(135deg, ${tierColors[c.tier || 'bronze']}, ${tierColors[c.tier || 'bronze']}dd); border-radius: 20px; padding: 30px; color: white; box-shadow: 0 20px 40px rgba(0,0,0,0.15); text-align: center; }
+                    .logo { font-size: 12px; font-weight: bold; letter-spacing: 2px; opacity: 0.8; margin-bottom: 20px; }
+                    .tier { font-size: 24px; font-weight: 800; letter-spacing: 3px; margin-bottom: 10px; }
+                    .name { font-size: 18px; font-weight: 600; margin-bottom: 5px; }
+                    .cardnum { font-family: monospace; font-size: 22px; letter-spacing: 4px; margin: 20px 0; background: rgba(255,255,255,0.15); padding: 10px; border-radius: 10px; }
+                    .barcode { background: white; padding: 10px; border-radius: 10px; margin-top: 15px; overflow: hidden; max-width: 100%; }
+                    .barcode svg { width: 100%; height: auto; display: block; }
+                    .footer { font-size: 10px; opacity: 0.7; margin-top: 15px; }
+                </style></head><body>
+                <div class="card">
+                    <div class="logo">RIVER-WALL</div>
+                    <div class="tier">${tierLabels[c.tier || 'bronze']}</div>
+                    <div class="name">${escapeHtml((c.firstName || '') + ' ' + (c.lastName || '')).toUpperCase()}</div>
+                    <div class="cardnum">${c.loyaltyCardNumber}</div>
+                    <div class="barcode"><svg id="bc"></svg></div>
+                    <div class="footer">Escanea en caja para identificarte<br>Código: RWCRM-CARD-${c.loyaltyCardNumber}</div>
+                </div>
+                <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+                <script>JsBarcode('#bc', 'RWCRM-CARD-${c.loyaltyCardNumber}', { format: 'CODE128', width: 2, height: 50, displayValue: false }); window.print();<\/script>
+                </body></html>
+            `);
+            w.document.close();
+        };
+
+        window.printCoupon = function(couponId) {
+            const cp = CRM.crmCoupons.find(x => x.id === couponId);
+            if (!cp) return;
+            const discountText = cp.discountType === 'percentage' ? cp.discountValue + '% OFF' : cp.discountValue.toLocaleString('es-GQ') + ' FCFA OFF';
+            const w = window.open('', '_blank', 'width=400,height=500');
+            w.document.write(`
+                <html><head><title>Cupón ${cp.code}</title>
+                <style>
+                    body { font-family: Arial,sans-serif; margin: 0; padding: 20px; background: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                    .coupon { width: 340px; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; border: 2px dashed #0284c7; }
+                    .header { color: #0284c7; font-size: 12px; font-weight: bold; letter-spacing: 2px; margin-bottom: 15px; }
+                    .discount { font-size: 42px; font-weight: 800; color: #0284c7; margin-bottom: 5px; }
+                    .name { font-size: 16px; font-weight: 600; color: #334155; margin-bottom: 15px; }
+                    .code { font-family: monospace; font-size: 20px; letter-spacing: 3px; background: #f1f5f9; padding: 10px; border-radius: 10px; margin-bottom: 15px; color: #334155; }
+                    .barcode { margin: 15px 0; overflow: hidden; max-width: 100%; }
+                    .barcode svg { width: 100%; height: auto; display: block; }
+                    .valid { font-size: 11px; color: #64748b; margin-top: 10px; }
+                    .scissors { font-size: 20px; color: #94a3b8; margin: 10px 0; }
+                </style></head><body>
+                <div class="coupon">
+                    <div class="header">RIVER-WALL CUPÓN</div>
+                    <div class="discount">${discountText}</div>
+                    <div class="name">${escapeHtml(cp.name)}</div>
+                    <div class="scissors">✂️</div>
+                    <div class="code">${cp.code}</div>
+                    <div class="barcode"><svg id="bc"></svg></div>
+                    <div class="valid">Válido: ${new Date(cp.validFrom).toLocaleDateString('es-GQ')} - ${new Date(cp.validUntil).toLocaleDateString('es-GQ')}<br>Compra mínima: ${cp.minPurchase > 0 ? cp.minPurchase.toLocaleString('es-GQ') + ' FCFA' : 'Sin mínimo'}</div>
+                </div>
+                <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+                <script>JsBarcode('#bc', 'RWCRM-COUPON-${cp.code}', { format: 'CODE128', width: 2, height: 50, displayValue: false }); window.print();<\/script>
+                </body></html>
+            `);
+            w.document.close();
+        };
+
+        window.saveManualReload = async function() {
+            const clientId = document.getElementById('manualReloadClient').value;
+            const amount = parseFloat(document.getElementById('manualReloadAmount').value) || 0;
+            const desc = document.getElementById('manualReloadDesc').value.trim();
+            const c = CRM.clients.find(x => x.id === clientId);
+            if (!c) return showToast('Seleccione un cliente', 'error');
+            if (amount <= 0) return showToast('Ingrese un monto válido', 'error');
+            if (amount > CRM.maxReloadAmount) return showToast(`Máximo ${fmtMoney(CRM.maxReloadAmount)}`, 'error');
+
+            const newBalance = (c.walletBalance || 0) + amount;
+            await updateClient(clientId, { walletBalance: newBalance, updatedAt: nowIso() });
+            await addWalletTransaction({
+                clientId, type: 'reload', amount,
+                balanceAfter: newBalance, description: desc || 'Recarga manual',
+                status: 'completed', createdAt: nowIso()
+            });
+            await logActivity('reload', `Recarga manual de ${fmtMoney(amount)} a ${c.firstName} ${c.lastName}`);
+            showToast('Recarga realizada', 'success');
+            closeModal();
+            navigateTo('wallet');
+            updateTotalWalletBalance();
+        };
+
+        // ==========================================
+        // UTILS
+        // ==========================================
+        function updateTotalWalletBalance() {
+            const total = CRM.clients.reduce((s, c) => s + (c.walletBalance || 0), 0);
+            const el = document.getElementById('totalWalletBalance');
+            if (el) el.textContent = fmtMoney(total);
+        }
+
+        function getUrlParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        function handlePreselectedClient() {
+            const clientId = getUrlParam('client');
+            if (clientId) {
+                setTimeout(() => {
+                    const c = CRM.clients.find(x => x.id === clientId);
+                    if (c) {
+                        navigateTo('clients');
+                        setTimeout(() => openClientCRMModal(clientId), 300);
+                    }
+                }, 800);
+            }
+        }
+
+        // ==========================================
+        // PUBLIC REQUEST API (for customers to request reloads)
+        // This can be called from external pages or customer portal
+        // ==========================================
+        window.requestCustomerReload = async function(clientId, amount, notes = '') {
+            if (amount <= 0 || amount > CRM.maxReloadAmount) return { success: false, error: 'Monto inválido' };
+            const req = {
+                id: genId(), clientId, amount, status: 'pending',
+                requestedAt: nowIso(), notes
+            };
+            CRM.reloadRequests.push(req);
+            await saveToCloud('reloadRequests', req);
+            return { success: true, requestId: req.id };
+        };
+
+        // Listen for localStorage changes from software.html (or other tabs)
+        window.addEventListener('storage', (e) => {
+            if (!CRM.tenantId) return;
+            const key = `rw_${CRM.tenantId}_clients`;
+            if (e.key === key) {
+                console.log('[CRM] Detected clients change in localStorage, reloading...');
+                try {
+                    const arr = JSON.parse(e.newValue || '[]');
+                    if (Array.isArray(arr)) {
+                        const map = new Map(CRM.clients.map(c => [c.id, c]));
+                        arr.forEach(c => map.set(c.id, c));
+                        CRM.clients = Array.from(map.values());
+                        if (CRM.currentPage === 'clients') renderClients(document.getElementById('mainContent'));
+                        updateTotalWalletBalance();
+                    }
+                } catch (err) {}
+            }
+        });
+
+        // Init
+        initApp();
+    </script>
+</body>
+</html>

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self' data:;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0284c7">
+    <title>Mi Cuenta - RIVER-WALL</title>
+    <script src="modules/security-utils.js"></script>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiUklWRVItV0FMTCBNaSBDdWVudGEiLCJzaG9ydF9uYW1lIjoiTWkgQ3VlbnRhIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiNmOGZhZmMiLCJ0aGVtZV9jb2xvciI6IiMwMjg0YzcifQ==">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="env.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #f1f5f9; position: relative; }
+        .gradient-header { background: linear-gradient(135deg, #0284c7, #06b6d4); }
+        .card { background: white; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .nav-item { transition: all 0.15s; }
+        .nav-item.active { color: #0284c7; }
+        .nav-item.active i { transform: scale(1.1); }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #cbd5e1; transition: all 0.15s; }
+        .pin-dot.filled { background: #0284c7; border-color: #0284c7; }
+        .barcode-card { background: white; border-radius: 16px; padding: 20px; text-align: center; }
+        .btn-primary { background: linear-gradient(135deg, #0284c7, #06b6d4); color: white; }
+        .btn-primary:active { transform: scale(0.97); }
+        .amount-btn { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; font-weight: 600; color: #334155; transition: all 0.15s; }
+        .amount-btn:active { background: #f8fafc; transform: scale(0.95); }
+        .amount-btn.selected { background: linear-gradient(135deg, #0284c7, #06b6d4); color: white; border-color: transparent; }
+        .hidden { display: none !important; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .slide-up { animation: slideUp 0.3s ease; }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="app">
+        <!-- LOGIN -->
+        <div id="loginScreen" class="min-h-screen flex flex-col justify-center px-6 py-8">
+            <div id="fileProtocolWarning" class="hidden mb-4 mx-auto max-w-sm bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <p class="text-red-700 text-sm font-bold mb-1"><i class="fas fa-exclamation-triangle mr-1"></i> Modo archivo local detectado</p>
+                <p class="text-red-600 text-xs">Esta app no funciona abriendo el archivo directamente. Usa un servidor local:</p>
+                <code class="block mt-2 bg-red-100 rounded-lg px-2 py-1 text-[11px] text-red-800 font-mono">npx serve -p 3000</code>
+            </div>
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 rounded-2xl gradient-header flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <i class="fas fa-gem text-white text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">Mi Cuenta</h1>
+                <p class="text-slate-400 text-sm mt-1">RIVER-WALL Fidelización</p>
+            </div>
+            <div class="card p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Teléfono o Email</label>
+                    <input type="text" id="loginInput" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100" placeholder="Ej: +240 222 000 000">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">PIN de 4 dígitos</label>
+                    <input type="password" id="loginPin" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 text-center tracking-[0.5em]" placeholder="••••" maxlength="4" inputmode="numeric">
+                </div>
+                <button onclick="doLogin()" class="w-full py-3.5 rounded-xl btn-primary font-semibold text-sm shadow-lg shadow-sky-200">Acceder</button>
+                <p class="text-center text-xs text-slate-400">¿No tienes cuenta? Solicita tu tarjeta en tienda</p>
+            </div>
+        </div>
+
+        <!-- MAIN APP -->
+        <div id="mainApp" class="hidden pb-20">
+            <!-- Header -->
+            <div class="gradient-header text-white px-5 pt-8 pb-16 rounded-b-[32px]">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <p class="text-white/70 text-xs">Hola,</p>
+                        <h2 id="userName" class="font-bold text-lg">Cliente</h2>
+                    </div>
+                    <button onclick="doLogout()" class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-sign-out-alt text-sm"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white/15 backdrop-blur rounded-2xl p-4">
+                        <p class="text-white/70 text-xs mb-1">Mi Billetera</p>
+                        <p id="myWallet" class="text-xl font-bold">0 FCFA</p>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur rounded-2xl p-4">
+                        <p class="text-white/70 text-xs mb-1">Mis Puntos</p>
+                        <p id="myPoints" class="text-xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="px-4 -mt-8 space-y-4">
+                <!-- Tarjeta con Código de Barras -->
+                <div class="card p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-xs text-slate-400">Tarjeta de Fidelidad</p>
+                            <p id="myCardNumber" class="font-mono text-sm font-bold text-slate-700">-</p>
+                        </div>
+                        <span id="myTier" class="px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500">Bronce</span>
+                    </div>
+                    <svg id="cardBarcode" class="w-full h-16"></svg>
+                    <p class="text-[10px] text-slate-400 text-center mt-1">Muestra este código en caja para identificarte</p>
+                </div>
+
+                <!-- Acciones rápidas -->
+                <div class="grid grid-cols-4 gap-3">
+                    <button onclick="showScreen('reload')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-white shadow-sm active:scale-95 transition-transform">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600"><i class="fas fa-plus"></i></div>
+                        <span class="text-[10px] font-medium text-slate-600">Recargar</span>
+                    </button>
+                    <button onclick="showScreen('transfer')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-white shadow-sm active:scale-95 transition-transform">
+                        <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600"><i class="fas fa-exchange-alt"></i></div>
+                        <span class="text-[10px] font-medium text-slate-600">Transferir</span>
+                    </button>
+                    <button onclick="showScreen('coupons')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-white shadow-sm active:scale-95 transition-transform">
+                        <div class="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600"><i class="fas fa-ticket"></i></div>
+                        <span class="text-[10px] font-medium text-slate-600">Cupones</span>
+                    </button>
+                    <button onclick="showScreen('history')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-white shadow-sm active:scale-95 transition-transform">
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600"><i class="fas fa-history"></i></div>
+                        <span class="text-[10px] font-medium text-slate-600">Historial</span>
+                    </button>
+                </div>
+
+                <!-- Historial reciente -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-800 text-sm">Movimientos recientes</h3>
+                        <button onclick="showScreen('history')" class="text-xs text-sky-600 font-medium">Ver todo</button>
+                    </div>
+                    <div id="recentHistory" class="space-y-2"></div>
+                </div>
+
+                <!-- Cupones activos -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-800 text-sm">Mis Cupones</h3>
+                        <button onclick="showScreen('coupons')" class="text-xs text-sky-600 font-medium">Ver todo</button>
+                    </div>
+                    <div id="myCouponsList" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN: Recargar -->
+        <div id="screenReload" class="hidden min-h-screen bg-slate-50">
+            <div class="gradient-header text-white px-5 pt-6 pb-8">
+                <button onclick="showScreen('home')" class="mb-4 flex items-center gap-2 text-white/80 text-sm">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </button>
+                <h2 class="text-xl font-bold">Solicitar Recarga</h2>
+                <p class="text-white/70 text-sm">Máximo 1.000.000 FCFA</p>
+            </div>
+            <div class="px-4 -mt-4">
+                <div class="card p-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">Monto</label>
+                        <input type="number" id="reloadAmount" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-lg font-bold text-center outline-none focus:border-sky-400" placeholder="0 FCFA">
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="setReloadAmount(5000)" class="amount-btn text-sm">5.000</button>
+                        <button onclick="setReloadAmount(10000)" class="amount-btn text-sm">10.000</button>
+                        <button onclick="setReloadAmount(20000)" class="amount-btn text-sm">20.000</button>
+                        <button onclick="setReloadAmount(50000)" class="amount-btn text-sm">50.000</button>
+                        <button onclick="setReloadAmount(100000)" class="amount-btn text-sm">100.000</button>
+                        <button onclick="setReloadAmount(200000)" class="amount-btn text-sm">200.000</button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">Notas (opcional)</label>
+                        <textarea id="reloadNotes" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-sky-400" rows="2" placeholder="Ej: Pago por transferencia bancaria"></textarea>
+                    </div>
+                    <button onclick="submitReloadRequest()" class="w-full py-3.5 rounded-xl btn-primary font-semibold text-sm shadow-lg shadow-sky-200">Enviar Solicitud</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN: Transferir -->
+        <div id="screenTransfer" class="hidden min-h-screen bg-slate-50">
+            <div class="gradient-header text-white px-5 pt-6 pb-8">
+                <button onclick="showScreen('home')" class="mb-4 flex items-center gap-2 text-white/80 text-sm"><i class="fas fa-arrow-left"></i> Volver</button>
+                <h2 class="text-xl font-bold">Transferir Saldo</h2>
+            </div>
+            <div class="px-4 -mt-4">
+                <div class="card p-5 space-y-4">
+                    <div class="bg-slate-50 rounded-xl p-4 text-center">
+                        <p class="text-xs text-slate-400">Saldo disponible</p>
+                        <p id="transferBalance" class="text-2xl font-bold text-emerald-600">0 FCFA</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">Teléfono del destinatario</label>
+                        <input type="tel" id="transferPhone" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-sky-400" placeholder="+240 XXX XXX XXX">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">Monto</label>
+                        <input type="number" id="transferAmount" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-lg font-bold text-center outline-none focus:border-sky-400" placeholder="0 FCFA">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">Concepto</label>
+                        <input type="text" id="transferConcept" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-sky-400" placeholder="Ej: Devolución">
+                    </div>
+                    <button onclick="submitTransfer()" class="w-full py-3.5 rounded-xl btn-primary font-semibold text-sm shadow-lg shadow-sky-200">Transferir</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN: Cupones -->
+        <div id="screenCoupons" class="hidden min-h-screen bg-slate-50">
+            <div class="gradient-header text-white px-5 pt-6 pb-8">
+                <button onclick="showScreen('home')" class="mb-4 flex items-center gap-2 text-white/80 text-sm"><i class="fas fa-arrow-left"></i> Volver</button>
+                <h2 class="text-xl font-bold">Mis Cupones</h2>
+            </div>
+            <div class="px-4 -mt-4 pb-20" id="couponsContent"></div>
+        </div>
+
+        <!-- SCREEN: Historial -->
+        <div id="screenHistory" class="hidden min-h-screen bg-slate-50">
+            <div class="gradient-header text-white px-5 pt-6 pb-8">
+                <button onclick="showScreen('home')" class="mb-4 flex items-center gap-2 text-white/80 text-sm"><i class="fas fa-arrow-left"></i> Volver</button>
+                <h2 class="text-xl font-bold">Historial</h2>
+            </div>
+            <div class="px-4 -mt-4 pb-20" id="historyContent"></div>
+        </div>
+
+        <!-- MODAL: PIN Confirmation -->
+        <div id="pinModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end">
+            <div class="bg-white w-full rounded-t-[24px] p-6 slide-up">
+                <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6"></div>
+                <h3 class="text-center font-bold text-slate-800 mb-1">Confirmar con PIN</h3>
+                <p id="pinDescription" class="text-center text-sm text-slate-400 mb-6">Introduce tu PIN de 4 dígitos</p>
+                <div class="flex justify-center gap-4 mb-8">
+                    <div class="pin-dot" id="pinDot1"></div>
+                    <div class="pin-dot" id="pinDot2"></div>
+                    <div class="pin-dot" id="pinDot3"></div>
+                    <div class="pin-dot" id="pinDot4"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+                    ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="enterPin(${n})" class="w-full aspect-square rounded-2xl bg-slate-50 text-xl font-semibold text-slate-700 active:bg-slate-100">${n}</button>`).join('')}
+                    <button onclick="clearPin()" class="w-full aspect-square rounded-2xl bg-slate-50 text-sm font-semibold text-red-500 active:bg-slate-100"><i class="fas fa-backspace"></i></button>
+                    <button onclick="enterPin(0)" class="w-full aspect-square rounded-2xl bg-slate-50 text-xl font-semibold text-slate-700 active:bg-slate-100">0</button>
+                    <button onclick="cancelPin()" class="w-full aspect-square rounded-2xl bg-slate-50 text-sm font-semibold text-slate-500 active:bg-slate-100">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Coupon Barcode -->
+        <div id="couponModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm rounded-2xl p-6 text-center">
+                <h3 id="couponModalTitle" class="font-bold text-slate-800 mb-1">Cupón</h3>
+                <p id="couponModalDesc" class="text-sm text-slate-400 mb-4">Muestra en caja para canjear</p>
+                <svg id="couponBarcode" class="w-full h-20 mb-2"></svg>
+                <p id="couponModalCode" class="font-mono text-sm font-bold text-slate-700 mb-6">-</p>
+                <button onclick="closeCouponModal()" class="w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- TOAST -->
+        <div id="toast" class="hidden fixed top-4 left-4 right-4 z-50">
+            <div id="toastInner" class="max-w-sm mx-auto px-4 py-3 rounded-xl text-white text-sm font-medium text-center shadow-lg"></div>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="env.js"></script>
+    <script src="supabase-client.js"></script>
+
+    <script type="module">
+        const APP = {
+            client: null,
+            tenantId: null,
+            txs: [],
+            coupons: [],
+            pendingPinAction: null,
+            pinValue: ''
+        };
+
+        const fmtMoney = n => (n || 0).toLocaleString('es-GQ') + ' FCFA';
+        const nowIso = () => new Date().toISOString();
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            const inner = document.getElementById('toastInner');
+            inner.textContent = msg;
+            inner.className = `max-w-sm mx-auto px-4 py-3 rounded-xl text-white text-sm font-medium text-center shadow-lg ${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-amber-500'}`;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        async function getSupabase() {
+            const pkg = await window.SupabaseClient.init();
+            return pkg.supabase;
+        }
+
+        // LOGIN — ISO 27001 A.9.4.2: PIN verified server-side via SECURITY DEFINER RPC
+        async function doLogin() {
+            const input = document.getElementById('loginInput').value.trim().toLowerCase();
+            const pin = document.getElementById('loginPin').value.trim();
+            if (!input || pin.length !== 4) return showToast('Introduce tus datos correctamente', 'error');
+
+            let tenant = getTenantFromStorage();
+            if (!tenant?.id) {
+                try {
+                    const parentTenant = window.parent && window.parent.localStorage ? window.parent.localStorage.getItem('rw_offline_tenant') : null;
+                    if (parentTenant) tenant = JSON.parse(parentTenant);
+                } catch (e) {}
+            }
+            if (!tenant?.id) return showToast('No se detectó el negocio. Abre primero desde el enlace del comercio o usa ?tenant=TU_ID', 'error');
+            APP.tenantId = tenant.id;
+            saveTenantToStorage(tenant);
+
+            // ISO 27001 A.9.4.2: Authenticate via secure RPC (bypasses RLS, verifies PIN hash)
+            try {
+                const sb = await getSupabase();
+                const { data, error } = await sb.rpc('crm_authenticate', {
+                    p_tenant_id: tenant.id,
+                    p_phone_or_email: input,
+                    p_pin: pin
+                });
+                if (error) throw error;
+                if (data?.error === 'CLIENT_NOT_FOUND') return showToast('Cliente no encontrado', 'error');
+                if (data?.error === 'INVALID_PIN') return showToast('PIN incorrecto', 'error');
+
+                APP.client = data;
+                // Session token (never stores PIN — only client UUID for re-auth)
+                const sessionData = { clientId: data.id, tenantId: tenant.id, exp: Date.now() + 86400000 };
+                localStorage.setItem('crm_client_session', JSON.stringify(sessionData));
+                await loadClientData();
+                showScreen('home');
+                startWalletRequestListener();
+            } catch (e) {
+                console.warn('[CRM] Login error:', e);
+                // Fallback: localStorage lookup (offline)
+                const local = findClientInLocalStorage(tenant.id, input);
+                if (local && local.pinHash === pin) {
+                    APP.client = local;
+                    localStorage.setItem('crm_client_session', JSON.stringify({ clientId: local.id, tenantId: tenant.id, exp: Date.now() + 86400000 }));
+                    await loadClientData();
+                    showScreen('home');
+                    startWalletRequestListener();
+                    showToast('Modo offline', 'success');
+                } else {
+                    showToast('Error de conexión. Verifica tu conexión a internet.', 'error');
+                }
+            }
+        }
+        window.doLogin = doLogin;
+
+        function findClientInLocalStorage(tenantId, input) {
+            try {
+                const key = `rw_${tenantId}_clients`;
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                const clients = JSON.parse(raw);
+                const inputNorm = input.replace(/\s/g, '');
+                return clients.find(c => {
+                    const phone = (c.phone || '').toLowerCase().replace(/\s/g, '');
+                    const email = (c.email || '').toLowerCase();
+                    return phone === inputNorm || email === input || c.loyaltyCardNumber?.toLowerCase() === inputNorm;
+                }) || null;
+            } catch (e) { return null; }
+        }
+
+        function getTenantFromStorage() {
+            try { const raw = localStorage.getItem('rw_offline_tenant'); if (raw) return JSON.parse(raw); } catch (e) {}
+            try {
+                const urlTenant = new URLSearchParams(window.location.search).get('tenant');
+                if (urlTenant) return { id: urlTenant, businessName: 'Negocio' };
+            } catch (e) {}
+            return null;
+        }
+
+        function saveTenantToStorage(tenant) {
+            try { localStorage.setItem('rw_offline_tenant', JSON.stringify(tenant)); } catch (e) {}
+        }
+
+        function doLogout() {
+            localStorage.removeItem('crm_client_session');
+            APP.client = null;
+            location.reload();
+        }
+        window.doLogout = doLogout;
+
+        // AUTO LOGIN
+        async function tryAutoLogin() {
+            const raw = localStorage.getItem('crm_client_session');
+            if (!raw) return;
+            try {
+                const s = JSON.parse(raw);
+                if (Date.now() > s.exp) { localStorage.removeItem('crm_client_session'); return; }
+                let tenant = getTenantFromStorage();
+                if (!tenant?.id || tenant.id !== s.tenantId) { localStorage.removeItem('crm_client_session'); return; }
+                APP.tenantId = s.tenantId;
+                const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.clientId);
+                if (isValidUuid) {
+                    try {
+                        const sb = await getSupabase();
+                        const { data } = await sb.rpc('crm_get_wallet', { p_client_id: s.clientId, p_limit: 1 });
+                        if (data && !data.error) {
+                            APP.client = { id: s.clientId };
+                        }
+                    } catch (e) {}
+                }
+                if (!APP.client) {
+                    const saved = localStorage.getItem('rw_offline_tenant');
+                    if (saved) {
+                        try {
+                            const locals = JSON.parse(localStorage.getItem(`rw_${s.tenantId}_clients`) || '[]');
+                            const local = locals.find(c => c.id === s.clientId);
+                            if (local) APP.client = local;
+                        } catch (e2) {}
+                    }
+                }
+                if (!APP.client) { localStorage.removeItem('crm_client_session'); return; }
+                await loadClientData();
+                showScreen('home');
+                startWalletRequestListener();
+            } catch (e) { localStorage.removeItem('crm_client_session'); }
+        }
+
+        async function loadClientData() {
+            if (!APP.client) return;
+            const c = APP.client;
+            document.getElementById('userName').textContent = `${c.firstName || c.first_name || ''} ${c.lastName || c.last_name || ''}`.trim() || 'Cliente';
+            document.getElementById('myWallet').textContent = fmtMoney(c.walletBalance || c.wallet_balance || 0);
+            document.getElementById('myPoints').textContent = c.loyaltyPoints || c.loyalty_points || 0;
+            document.getElementById('myCardNumber').textContent = c.loyaltyCardNumber || c.loyalty_card_number || 'Sin tarjeta';
+            document.getElementById('myTier').textContent = (c.tier || 'bronze').toUpperCase();
+            document.getElementById('myTier').className = `px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r ${getTierGradient(c.tier || 'bronze')}`;
+
+            if (c.loyaltyCardNumber || c.loyalty_card_number) {
+                const cardNum = c.loyaltyCardNumber || c.loyalty_card_number;
+                try { JsBarcode('#cardBarcode', 'RWCRM-CARD-' + cardNum, { format: 'CODE128', lineColor: '#334155', width: 2, height: 50, displayValue: true, fontSize: 10, text: cardNum }); } catch (e) {}
+            }
+
+            const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c.id);
+            if (isValidUuid) {
+                // Load wallet via RPC
+                try {
+                    const clientId = c.id;
+                    const sb = await getSupabase();
+                    const { data, error } = await sb.rpc('crm_get_wallet', { p_client_id: clientId, p_limit: 50 });
+                    if (error) throw error;
+                    if (data?.walletBalance !== undefined) {
+                        APP.client.walletBalance = data.walletBalance;
+                        c.walletBalance = data.walletBalance;
+                        document.getElementById('myWallet').textContent = fmtMoney(data.walletBalance);
+                    }
+                    APP.txs = (data?.transactions || []).map(t => ({
+                        id: t.id,
+                        type: t.type,
+                        amount: t.amount,
+                        balanceAfter: t.balanceAfter,
+                        description: t.description,
+                        createdAt: t.createdAt,
+                        relatedClientId: t.relatedClientId
+                    }));
+                } catch (e) {
+                    console.warn('[CRM] Error loading wallet:', e.message);
+                    APP.txs = [];
+                }
+                // Load coupons via RPC
+                try {
+                    const clientId = c.id;
+                    const sb = await getSupabase();
+                    const { data, error } = await sb.rpc('crm_get_coupons', { p_client_id: clientId });
+                    if (error) throw error;
+                    APP.coupons = (data?.coupons || []).map(cp => ({
+                        code: cp.code,
+                        name: cp.name,
+                        description: cp.description,
+                        status: cp.status,
+                        discountType: cp.discountType,
+                        discountValue: cp.discountValue,
+                        minPurchase: cp.minPurchase,
+                        validFrom: cp.validFrom,
+                        validUntil: cp.validUntil,
+                        purchasedAt: cp.purchasedAt
+                    }));
+                } catch (e) {
+                    console.warn('[CRM] Error loading coupons:', e.message);
+                    APP.coupons = [];
+                }
+            } else {
+                APP.txs = [];
+                APP.coupons = [];
+            }
+            renderMyCoupons();
+            renderCouponsScreen();
+        }
+
+        function getTierGradient(tier) {
+            const map = { bronze: 'from-amber-700 to-amber-600', silver: 'from-slate-400 to-slate-500', gold: 'from-amber-400 to-yellow-500', platinum: 'from-violet-400 to-purple-600' };
+            return map[tier] || map.bronze;
+        }
+
+        function renderRecentHistory() {
+            const el = document.getElementById('recentHistory');
+            if (!APP.txs.length) { el.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Sin movimientos</p>'; return; }
+            el.innerHTML = APP.txs.slice(0, 5).map(t => `
+                <div class="flex justify-between items-center p-3 rounded-xl bg-slate-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${getTxIconBg(t.type)} flex items-center justify-center text-white text-xs"><i class="fas ${getTxIcon(t.type)}"></i></div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-700">${getTxLabel(t.type)}</p>
+                            <p class="text-[10px] text-slate-400">${new Date(t.createdAt).toLocaleDateString('es-GQ')}</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-bold ${t.type === 'reload' || t.type === 'transfer_in' ? 'text-emerald-600' : 'text-rose-600'}">${t.type === 'reload' || t.type === 'transfer_in' ? '+' : '-'}${fmtMoney(t.amount)}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderHistoryScreen() {
+            const el = document.getElementById('historyContent');
+            if (!APP.txs.length) { el.innerHTML = '<div class="card p-8 text-center text-slate-400 text-sm">Sin historial</div>'; return; }
+            el.innerHTML = `<div class="space-y-2">${APP.txs.map(t => `
+                <div class="card p-4 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl ${getTxIconBg(t.type)} flex items-center justify-center text-white"><i class="fas ${getTxIcon(t.type)}"></i></div>
+                        <div>
+                            <p class="font-medium text-slate-800 text-sm">${getTxLabel(t.type)}</p>
+                            <p class="text-xs text-slate-400">${t.description || ''}</p>
+                            <p class="text-[10px] text-slate-300">${new Date(t.createdAt).toLocaleString('es-GQ')}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${t.type === 'reload' || t.type === 'transfer_in' ? 'text-emerald-600' : 'text-rose-600'}">${t.type === 'reload' || t.type === 'transfer_in' ? '+' : '-'}${fmtMoney(t.amount)}</p>
+                        <p class="text-[10px] text-slate-400">${fmtMoney(t.balanceAfter)}</p>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function renderMyCoupons() {
+            const el = document.getElementById('myCouponsList');
+            const active = APP.coupons.filter(c => c.status === 'active');
+            if (!active.length) { el.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Sin cupones activos</p>'; return; }
+            el.innerHTML = active.slice(0, 3).map(c => `
+                <div class="flex justify-between items-center p-3 rounded-xl bg-pink-50 border border-pink-100">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">${c.code}</p>
+                        <p class="text-[10px] text-slate-400">Válido hasta ${new Date(c.validUntil).toLocaleDateString('es-GQ')}</p>
+                    </div>
+                    <button onclick="showCouponBarcode('${c.code}')" class="px-3 py-1.5 rounded-lg bg-pink-500 text-white text-xs font-medium">Ver</button>
+                </div>
+            `).join('');
+        }
+
+        function renderCouponsScreen() {
+            const el = document.getElementById('couponsContent');
+            if (!APP.coupons.length) { el.innerHTML = '<div class="card p-8 text-center text-slate-400 text-sm">Sin cupones</div>'; return; }
+            el.innerHTML = `<div class="space-y-3">${APP.coupons.map(c => `
+                <div class="card p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-bold text-slate-800">${c.code}</p>
+                            <p class="text-xs text-slate-400">${c.status === 'active' ? 'Activo' : c.status === 'redeemed' ? 'Canjeado' : 'Expirado'}</p>
+                        </div>
+                        <span class="badge px-2 py-1 rounded-lg text-xs font-bold ${c.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">${c.status}</span>
+                    </div>
+                    ${c.status === 'active' ? `<button onclick="showCouponBarcode('${c.code}')" class="w-full py-2.5 rounded-xl bg-slate-800 text-white text-sm font-medium">Mostrar Código de Barras</button>` : ''}
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function getTxIcon(type) {
+            const map = { reload: 'fa-plus', transfer_in: 'fa-arrow-down', transfer_out: 'fa-arrow-up', purchase: 'fa-shopping-bag', coupon_redeem: 'fa-gift', discount: 'fa-percent', credit: 'fa-credit-card', debit: 'fa-shopping-cart' };
+            return map[type] || 'fa-circle';
+        }
+        function getTxIconBg(type) {
+            const map = { reload: 'bg-emerald-500', transfer_in: 'bg-sky-500', transfer_out: 'bg-amber-500', purchase: 'bg-rose-500', coupon_redeem: 'bg-purple-500', discount: 'bg-indigo-500', credit: 'bg-emerald-500', debit: 'bg-rose-500' };
+            return map[type] || 'bg-slate-400';
+        }
+        function getTxLabel(type) {
+            const map = { reload: 'Recarga', transfer_in: 'Transferencia recibida', transfer_out: 'Transferencia enviada', purchase: 'Compra', coupon_redeem: 'Canje cupón', discount: 'Descuento', credit: 'Abono', debit: 'Pago' };
+            return map[type] || type;
+        }
+
+        // SCREEN NAVIGATION
+        window.showScreen = function(name) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('screenReload').classList.add('hidden');
+            document.getElementById('screenTransfer').classList.add('hidden');
+            document.getElementById('screenCoupons').classList.add('hidden');
+            document.getElementById('screenHistory').classList.add('hidden');
+            if (name === 'home') document.getElementById('mainApp').classList.remove('hidden');
+            else document.getElementById('screen' + name.charAt(0).toUpperCase() + name.slice(1)).classList.remove('hidden');
+            if (name === 'transfer') document.getElementById('transferBalance').textContent = fmtMoney(APP.client?.walletBalance || 0);
+        };
+
+        // RELOAD — ISO 27001 A.9.4.2: PIN verified server-side
+        window.setReloadAmount = function(amt) {
+            document.getElementById('reloadAmount').value = amt;
+        };
+        window.submitReloadRequest = async function() {
+            const amount = parseFloat(document.getElementById('reloadAmount').value) || 0;
+            const notes = document.getElementById('reloadNotes').value.trim();
+            if (amount <= 0 || amount > 1000000) return showToast('Monto inválido (máx 1.000.000)', 'error');
+            if (!APP.client?.pinHash && !APP.client?.pin_hash) {
+                return showToast('No tienes PIN configurado. Solicítalo en tienda.', 'error');
+            }
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(APP.client.id);
+            if (!isUuid) return showToast('Tu cuenta debe estar sincronizada con el servidor para solicitar recargas. Visita la tienda.', 'error');
+            try {
+                const sb = await getSupabase();
+                const { data, error } = await sb.rpc('crm_submit_reload', {
+                    p_client_id: APP.client.id,
+                    p_amount: amount,
+                    p_notes: notes,
+                    p_pin: ''
+                });
+                if (error) throw error;
+                if (data?.error === 'INVALID_PIN') return showToast('PIN incorrecto', 'error');
+                showToast(data?.message || 'Solicitud enviada', 'success');
+                showScreen('home');
+            } catch (e) {
+                console.warn('[CRM] Reload error:', e);
+                showToast('Error al enviar solicitud', 'error');
+            }
+        };
+
+        // TRANSFER — ISO 27001 A.12.6.1: Atomic RPC, no client-side balance math
+        window.submitTransfer = async function() {
+            const phone = document.getElementById('transferPhone').value.trim();
+            const amount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            const concept = document.getElementById('transferConcept').value.trim();
+            if (!phone || amount <= 0) return showToast('Complete los datos', 'error');
+            if ((APP.client.walletBalance || 0) < amount) return showToast('Saldo insuficiente', 'error');
+
+            APP.pendingPinAction = { type: 'transfer', amount, phone, concept };
+            openPinModal(`Confirma transferencia de ${fmtMoney(amount)}`);
+        };
+
+        // PIN SYSTEM
+        window.openPinModal = function(description) {
+            document.getElementById('pinDescription').textContent = description || 'Introduce tu PIN de 4 dígitos';
+            APP.pinValue = '';
+            updatePinDots();
+            document.getElementById('pinModal').classList.remove('hidden');
+        };
+        window.enterPin = function(n) {
+            if (APP.pinValue.length >= 4) return;
+            APP.pinValue += n;
+            updatePinDots();
+            if (APP.pinValue.length === 4) confirmPinAction();
+        };
+        window.clearPin = function() {
+            APP.pinValue = APP.pinValue.slice(0, -1);
+            updatePinDots();
+        };
+        window.cancelPin = function() {
+            document.getElementById('pinModal').classList.add('hidden');
+            APP.pendingPinAction = null;
+            APP.pinValue = '';
+        };
+        function updatePinDots() {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById('pinDot' + i).classList.toggle('filled', i <= APP.pinValue.length);
+            }
+        }
+        async function confirmPinAction() {
+            const action = APP.pendingPinAction;
+            if (!action) { document.getElementById('pinModal').classList.add('hidden'); return; }
+            const pin = APP.pinValue;
+            APP.pinValue = '';
+            updatePinDots();
+            document.getElementById('pinModal').classList.add('hidden');
+
+            if (action.type === 'transfer') {
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(APP.client.id);
+                if (!isUuid) return showToast('Tu cuenta debe estar sincronizada para transferir. Visita la tienda.', 'error');
+                // ISO 27001 A.12.6.1: Atomic transfer via SECURITY DEFINER RPC
+                try {
+                    const sb = await getSupabase();
+                    const { data, error } = await sb.rpc('crm_transfer_wallet', {
+                        p_from_client_id: APP.client.id,
+                        p_to_phone: action.phone,
+                        p_amount: action.amount,
+                        p_concept: action.concept || '',
+                        p_pin: pin
+                    });
+                    if (error) throw error;
+                    if (data?.error === 'INVALID_PIN') return showToast('PIN incorrecto', 'error');
+                    if (data?.error === 'INSUFFICIENT_BALANCE') return showToast('Saldo insuficiente', 'error');
+                    if (data?.error === 'RECIPIENT_NOT_FOUND') return showToast('Destinatario no encontrado', 'error');
+                    if (data?.error === 'SAME_CLIENT') return showToast('No puedes transferirte a ti mismo', 'error');
+
+                    APP.client.walletBalance = data.fromBalance;
+                    await loadClientData();
+                    showToast('Transferencia realizada', 'success');
+                } catch (e) {
+                    console.warn('[CRM] Transfer error:', e);
+                    showToast('Error al realizar transferencia', 'error');
+                }
+            }
+            APP.pendingPinAction = null;
+        }
+
+        // COUPON BARCODE
+        window.showCouponBarcode = function(code) {
+            document.getElementById('couponModalTitle').textContent = 'Cupón';
+            document.getElementById('couponModalCode').textContent = code;
+            try { JsBarcode('#couponBarcode', 'RWCRM-COUPON-' + code, { format: 'CODE128', lineColor: '#334155', width: 2, height: 60, displayValue: false }); } catch (e) {}
+            document.getElementById('couponModal').classList.remove('hidden');
+        };
+        window.closeCouponModal = function() {
+            document.getElementById('couponModal').classList.add('hidden');
+        };
+
+        // ==========================================
+        // WALLET PAYMENT CONFIRMATION (from POS)
+        // ISO 27001 A.9.4.2: PIN verified server-side
+        // ==========================================
+        let currentWalletRequest = null;
+
+        function showWalletPaymentModal(request) {
+            currentWalletRequest = request;
+            const existing = document.getElementById('walletConfirmModal');
+            if (existing) existing.remove();
+            const modal = document.createElement('div');
+            modal.id = 'walletConfirmModal';
+            modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4';
+            const itemsHtml = (request.items || []).map(i => `<li class="flex justify-between text-xs text-slate-600"><span>${i.qty}x ${i.name}</span><span>${(i.price * i.qty).toLocaleString('es-GQ')} FCFA</span></li>`).join('');
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl slide-up">
+                    <div class="text-center mb-4">
+                        <div class="w-14 h-14 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-wallet text-sky-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800">Solicitud de pago</h3>
+                        <p class="text-slate-500 text-sm">${request.clientName || 'Cliente'}</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-3 mb-4">
+                        <p class="text-[10px] text-slate-500 mb-1">Total a pagar</p>
+                        <p class="text-2xl font-bold text-slate-800">${request.amount.toLocaleString('es-GQ')} FCFA</p>
+                        <ul class="mt-2 space-y-1">${itemsHtml}</ul>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-slate-500 mb-1">PIN de 4 dígitos</label>
+                        <input type="password" id="walletConfirmPin" maxlength="4" inputmode="numeric" class="w-full text-center tracking-[0.5em] font-mono text-lg py-2.5 rounded-xl border border-slate-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none" placeholder="••••">
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="rejectWalletPayment()" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm">Rechazar</button>
+                        <button onclick="confirmWalletPayment()" class="flex-1 py-3 rounded-xl btn-primary font-semibold text-sm">Confirmar</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+
+        window.confirmWalletPayment = async function() {
+            if (!currentWalletRequest) return;
+            const pin = document.getElementById('walletConfirmPin')?.value?.trim() || '';
+            if (!/^\d{4}$/.test(pin)) { showToast('Introduce tu PIN de 4 dígitos', 'error'); return; }
+            console.log('[CRM] Confirming wallet payment:', currentWalletRequest.saleId);
+
+            // ISO 27001 A.9.4.2: Verify PIN + deduct balance via SECURITY DEFINER RPC
+            try {
+                const sb = await getSupabase();
+                const { data, error } = await sb.rpc('crm_confirm_payment', {
+                    p_sale_id: currentWalletRequest.saleId,
+                    p_client_id: currentWalletRequest.clientId,
+                    p_pin: pin
+                });
+                if (error) throw error;
+                if (data?.error === 'INVALID_PIN') { showToast('PIN incorrecto', 'error'); return; }
+                if (data?.error === 'INSUFFICIENT_BALANCE') { showToast('Saldo insuficiente', 'error'); return; }
+
+                // Local fallback notification
+                const msg = { type: 'WALLET_PAYMENT_CONFIRMED', saleId: currentWalletRequest.saleId, clientId: currentWalletRequest.clientId, pin };
+                try { const bc = new BroadcastChannel('rw-wallet-payment'); bc.postMessage(msg); setTimeout(() => bc.close(), 2000); } catch (e) {}
+                try { window.parent.postMessage(msg, window.location.origin); } catch (e) {}
+                try { localStorage.setItem('rw_wallet_response', JSON.stringify({ ...msg, _ts: Date.now() })); } catch (e) {}
+
+                APP.client.walletBalance = data.walletBalance;
+                document.getElementById('myWallet').textContent = fmtMoney(data.walletBalance);
+            } catch (e) {
+                console.warn('[CRM] Confirm error:', e);
+                showToast('Error al confirmar pago', 'error');
+            }
+            const modal = document.getElementById('walletConfirmModal');
+            if (modal) modal.remove();
+            showToast('Pago confirmado', 'success');
+            currentWalletRequest = null;
+        };
+
+        window.rejectWalletPayment = async function() {
+            if (!currentWalletRequest) return;
+            console.log('[CRM] Rejecting wallet payment:', currentWalletRequest.saleId);
+
+            try {
+                const sb = await getSupabase();
+                await sb.rpc('crm_reject_payment', { p_sale_id: currentWalletRequest.saleId });
+            } catch (e) { console.warn('[CRM] Reject error:', e); }
+
+            const msg = { type: 'WALLET_PAYMENT_REJECTED', saleId: currentWalletRequest.saleId, clientId: currentWalletRequest.clientId };
+            try { const bc = new BroadcastChannel('rw-wallet-payment'); bc.postMessage(msg); setTimeout(() => bc.close(), 2000); } catch (e) {}
+            try { window.parent.postMessage(msg, window.location.origin); } catch (e) {}
+            try { localStorage.setItem('rw_wallet_response', JSON.stringify({ ...msg, _ts: Date.now() })); } catch (e) {}
+
+            const modal = document.getElementById('walletConfirmModal');
+            if (modal) modal.remove();
+            showToast('Pago rechazado', 'warning');
+            currentWalletRequest = null;
+        };
+
+        // Supabase Realtime listener for cross-device payment requests
+        let _walletChannel = null;
+        function startWalletRequestListener() {
+            if (!APP.client?.id || !APP.tenantId) return;
+            if (_walletChannel) { try { _walletChannel.unsubscribe(); } catch(e) {} _walletChannel = null; }
+            try {
+                getSupabase().then(sb => {
+                    _walletChannel = sb.channel('crm-wallet-requests');
+                    _walletChannel.on('postgres_changes', {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'payment_requests',
+                        filter: `client_id=eq.${APP.client.id}`
+                    }, (payload) => {
+                        const req = payload.new;
+                        console.log('[CRM] Wallet request via Realtime:', req);
+                        if (req.status === 'pending' && !currentWalletRequest) {
+                            showWalletPaymentModal({
+                                saleId: req.id,
+                                clientId: req.client_id,
+                                clientName: APP.client.firstName || APP.client.first_name || '',
+                                amount: req.amount,
+                                items: req.items || []
+                            });
+                        }
+                    }).subscribe();
+                });
+                console.log('[CRM] Wallet request listener started');
+            } catch (e) {
+                console.warn('[CRM] Could not start wallet listener:', e);
+            }
+        }
+        window.startWalletRequestListener = startWalletRequestListener;
+
+        // Local fallback listeners
+        window.addEventListener('message', (e) => {
+            if (!e.data || e.data.type !== 'WALLET_PAYMENT_REQUEST') return;
+            if (e.origin !== window.location.origin) return;
+            const req = e.data;
+            if (APP.client && req.clientId === APP.client.id) showWalletPaymentModal(req);
+        });
+        try {
+            const walletBC = new BroadcastChannel('rw-wallet-payment');
+            walletBC.onmessage = (event) => {
+                const req = event.data;
+                if (req && req.type === 'WALLET_PAYMENT_REQUEST') {
+                    if (APP.client && req.clientId === APP.client.id) showWalletPaymentModal(req);
+                }
+            };
+        } catch (e) {}
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'rw_wallet_request') {
+                try {
+                    const req = JSON.parse(e.newValue);
+                    if (req && req.type === 'WALLET_PAYMENT_REQUEST' && APP.client && req.clientId === APP.client.id) {
+                        showWalletPaymentModal(req);
+                    }
+                } catch (err) {}
+            }
+        });
+
+        // INIT
+        if (window.location.protocol === 'file:') {
+            const warn = document.getElementById('fileProtocolWarning');
+            if (warn) warn.classList.remove('hidden');
+        }
+        tryAutoLogin();
+    </script>
+</body>
+</html>
