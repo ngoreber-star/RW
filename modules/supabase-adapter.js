@@ -147,22 +147,45 @@
         DS._startSupabaseRealtime = function (sbDS) {
             const tenantId = this.cloud.tenantId;
             if (!tenantId) return;
-            sbDS.subscribeRealtime('products', tenantId, (payload) => this._applyRealtimeChange('products', payload));
-            sbDS.subscribeRealtime('sales', tenantId, (payload) => this._applyRealtimeChange('sales', payload));
-            sbDS.subscribeRealtime('clients', tenantId, (payload) => this._applyRealtimeChange('clients', payload));
-            sbDS.subscribeRealtime('warehouseStock', tenantId, (payload) => this._applyRealtimeChange('warehouseStock', payload));
+            const tables = [
+                'products', 'categories', 'clients', 'sales', 'purchases',
+                'suppliers', 'warehouses', 'warehouseStock', 'inventoryMovements',
+                'transfers', 'posTerminals', 'taxes', 'locales',
+                'loyaltyCards', 'walletTransactions', 'crmCoupons',
+                'crmCouponPurchases', 'reloadRequests', 'discountCampaigns',
+                'crmActivities', 'pendingTickets',
+            ];
+            tables.forEach(t => {
+                sbDS.subscribeRealtime(t, tenantId, (payload) => this._applyRealtimeChange(t, payload));
+            });
         };
 
         DS._applyRealtimeChange = function (table, payload) {
             const { eventType, new: newRec } = payload;
             // Los datos llegan en snake_case desde postgres_changes → convertir a camelCase
-            const rec = newRec && typeof newRec === 'object' && !Array.isArray(newRec)
+            let rec = newRec && typeof newRec === 'object' && !Array.isArray(newRec)
                 ? Object.entries(newRec).reduce((acc, [k, v]) => {
                     if (k === 'id' || k === 'tenant_id' || k === 'user_id' || k.startsWith('_')) { acc[k] = v; }
                     else { acc[k.replace(/_([a-z])/g, (_, l) => l.toUpperCase())] = v; }
                     return acc;
                   }, {})
                 : newRec;
+            // Resolver category UUID → nombre para products
+            if (table === 'products' && (rec.category || rec.categoryId)) {
+                const categories = this.data?.categories || [];
+                if (rec.category && categories.length) {
+                    const found = categories.find(c => c.id === rec.category);
+                    if (found) rec.categoryName = found.name;
+                }
+                if (rec.categoryId && !rec.category && categories.length) {
+                    const found = categories.find(c => c.id === rec.categoryId);
+                    if (found) rec.category = found.name;
+                }
+            }
+            // Resolver creditLimit → credit para clients
+            if (table === 'clients' && rec.credit == null && rec.creditLimit != null) {
+                rec.credit = rec.creditLimit;
+            }
             const data = this.data[table] || [];
             if (eventType === 'INSERT') {
                 if (!data.find(d => d.id === rec.id)) { data.push(rec); this.save(table); this.notify(table); }

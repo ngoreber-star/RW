@@ -295,8 +295,74 @@
     }
 
     // Convert snake_case keys → camelCase for frontend consumption.
+    // Reverse mapping: snake_case (DB) → camelCase (frontend)
+    // Cada entrada en toSnake() debe tener su reverso aquí,
+    // de lo contrario al leer de Supabase los campos se pierden.
     const TO_CAMEL_OVERRIDES = {
         class_id: 'class',
+        is_active: 'active',
+        image_url: 'image',
+        category_id: 'category',       // valor UUID → se resuelve a nombre en syncTable
+        credit_limit: 'credit',
+        is_default: 'isDefault',
+        is_main: 'isDefault',
+        is_owner: 'isOwner',
+        is_public_store: 'isPublicStore',
+        is_delivery: 'isDelivery',
+        tax_total: 'tax',
+        discount_total: 'discountTotal',
+        sale_number: 'saleNumber',
+        purchase_number: 'purchaseNumber',
+        pos_terminal_id: 'posTerminalId',
+        locale_id: 'localeId',
+        warehouse_id: 'warehouseId',
+        from_warehouse_id: 'fromWarehouseId',
+        to_warehouse_id: 'toWarehouseId',
+        product_id: 'productId',
+        client_id: 'clientId',
+        supplier_id: 'supplierId',
+        user_id: 'userId',
+        created_by: 'createdBy',
+        updated_by: 'updatedBy',
+        batch_id: 'batchId',
+        completed_at: 'completedAt',
+        opened_at: 'openedAt',
+        closed_at: 'closedAt',
+        expected_amount: 'expectedAmount',
+        opening_amount: 'openingAmount',
+        closing_amount: 'closingAmount',
+        difference_amount: 'differenceAmount',
+        sales_count: 'salesCount',
+        sales_total: 'salesTotal',
+        payment_totals: 'paymentTotals',
+        current_session: 'currentSession',
+        pin_hash: 'pinHash',
+        delivery_address: 'deliveryAddress',
+        delivery_status: 'deliveryStatus',
+        delivery_person: 'deliveryPerson',
+        estimated_time: 'estimatedTime',
+        payment_method: 'paymentMethod',
+        payment_details: 'paymentDetails',
+        customer_name: 'customerName',
+        customer_phone: 'customerPhone',
+        customer_email: 'customerEmail',
+        balance_after: 'balanceAfter',
+        tracking_code: 'trackingCode',
+        service_types: 'serviceTypes',
+        store_name: 'storeName',
+        order_code: 'orderCode',
+        card_number: 'cardNumber',
+        loyalty_card_number: 'loyaltyCardNumber',
+        loyalty_points: 'loyaltyPoints',
+        wallet_balance: 'walletBalance',
+        total_credit: 'totalCredit',
+        first_name: 'firstName',
+        last_name: 'lastName',
+        business_name: 'businessName',
+        logo_url: 'logoUrl',
+        syscohada_enabled: 'syscohadaEnabled',
+        min_stock: 'minStock',
+        max_stock: 'maxStock',
     };
 
     function toCamel(obj) {
@@ -440,25 +506,34 @@
             const sbTable = getSupabaseTableName(op.table);
             const tbl = this.supabase.from(sbTable);
 
+            // Resolver valores que necesitan transformación antes de enviar a Supabase
+            if (op.table === 'products' && op.payload) {
+                const categories = this._loadCache('categories');
+                // category (nombre string) → category_id (UUID)
+                if (op.payload.category && !op.payload.categoryId) {
+                    const found = categories.find(c => c.name === op.payload.category);
+                    if (found) op.payload.categoryId = found.id;
+                }
+                delete op.payload.category;
+            }
+
             if (op.operation === 'insert') {
                 const payload = toSnake({ ...op.payload, tenant_id: op.tenantId });
                 const { error } = await tbl.insert(payload);
                 if (error) throw error;
             } else if (op.operation === 'update') {
                 const { id, ...rest } = op.payload;
-                // Intentar obtener el registro remoto para resolver conflictos
                 const { data: remote } = await tbl.select('updated_at, created_at').eq('id', id).eq('tenant_id', op.tenantId).maybeSingle();
                 if (remote) {
                     const resolved = await this._resolveConflict(op.table, rest, remote);
                     if (resolved === remote) {
-                        // El remoto es más reciente → no sobreescribir, actualizar caché local
                         console.log('[DataStore] Conflicto resuelto: versión remota más reciente para', id);
                         const fullRemote = await tbl.select('*').eq('id', id).eq('tenant_id', op.tenantId).maybeSingle();
                         if (fullRemote?.data) {
                             const cached = this._loadCache(op.table);
                             const idx = cached.findIndex(i => i.id === id);
                             if (idx >= 0) {
-                                cached[idx] = toCamel(fullRemote.data);
+                                cached[idx] = this._postProcessSync(op.table, toCamel(fullRemote.data));
                                 this._saveCache(op.table, cached);
                             }
                         }
@@ -472,6 +547,27 @@
                 const { error } = await tbl.delete().eq('id', op.payload.id).eq('tenant_id', op.tenantId);
                 if (error) throw error;
             }
+        }
+
+        // Post-procesa datos recién llegados de Supabase: resuelve UUIDs → nombres legibles
+        _postProcessSync(table, obj) {
+            if (!obj) return obj;
+            if (table === 'products') {
+                const categories = this._loadCache('categories');
+                if (obj.category && categories.length) {
+                    const found = categories.find(c => c.id === obj.category);
+                    if (found) obj.categoryName = found.name;
+                }
+                if (obj.categoryId && !obj.category && categories.length) {
+                    const found = categories.find(c => c.id === obj.categoryId);
+                    if (found) obj.category = found.name;
+                }
+            }
+            if (table === 'clients') {
+                // credit (frontend) vs creditLimit (DB) — mantener ambos
+                if (obj.credit == null && obj.creditLimit != null) obj.credit = obj.creditLimit;
+            }
+            return obj;
         }
 
         // --- CRUD Operations (Local-first) ---
@@ -601,7 +697,7 @@
                     if (!camel.date && camel.createdAt) camel.date = camel.createdAt;
                     if (!camel.clientName && row.client_name) camel.clientName = row.client_name;
                 }
-                return camel;
+                return this._postProcessSync(table, camel);
             });
             this._saveCache(table, rows);
             console.log(`[DataStore] Synced ${table}: ${rows.length} rows`);
@@ -669,11 +765,11 @@
             const { eventType, new: newRecord, old: oldRecord } = payload;
 
             if (eventType === 'INSERT') {
-                const rec = toCamel(newRecord);
+                const rec = this._postProcessSync(table, toCamel(newRecord));
                 const exists = cache.find(item => item.id === rec.id);
                 if (!exists) cache.push(rec);
             } else if (eventType === 'UPDATE') {
-                const rec = toCamel(newRecord);
+                const rec = this._postProcessSync(table, toCamel(newRecord));
                 const idx = cache.findIndex(item => item.id === rec.id);
                 if (idx >= 0) cache[idx] = rec;
                 else cache.push(rec);
