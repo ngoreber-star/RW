@@ -5,3 +5,14 @@ dist/
 .vscode/
 .idea/
 *.local
+*.backup
+*.db
+*.sqlite
+.vite/
+.next/
+build/
+.DS_Store
+Thumbs.db
+*.pid
+secrets/
+**/new-*
