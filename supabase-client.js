@@ -281,6 +281,42 @@
             settings: 'settings',
             syscohadaEnabled: 'syscohada_enabled',
             class: 'class_id',
+            contactPerson: 'contact_person',
+            orderNumber: 'order_number',
+            location: 'address',
+            invoiceNumber: 'invoice_number',
+            isMain: 'is_main',
+            isDefault: 'is_default',
+            credit: 'credit_limit',
+            tax: 'tax_total',
+            ticket: 'sale_number',
+            date: 'sale_date',
+            totalSpent: 'total_spent',
+            description: 'description',
+            ticketNum: 'ticket_num',
+            posNote: 'pos_note',
+            campaignType: 'campaign_type',
+            discountType: 'discount_type',
+            discountValue: 'discount_value',
+            minPurchase: 'min_purchase',
+            validFrom: 'valid_from',
+            validUntil: 'valid_until',
+            applicableProducts: 'applicable_products',
+            applicableCategories: 'applicable_categories',
+            applicableClientTiers: 'applicable_client_tiers',
+            maxUses: 'max_uses',
+            usesCount: 'uses_count',
+            maxUsesPerClient: 'max_uses_per_client',
+            cardNumber: 'card_number',
+            issueDate: 'issue_date',
+            activityType: 'activity_type',
+            referenceId: 'reference_id',
+            referenceType: 'reference_type',
+            processedBy: 'processed_by',
+            processedAt: 'processed_at',
+            paymentReference: 'payment_reference',
+            printerWidth: 'printer_width',
+            openDrawer: 'open_drawer',
         };
         const result = {};
         for (const [key, value] of Object.entries(obj)) {
@@ -509,12 +545,26 @@
             // Resolver valores que necesitan transformación antes de enviar a Supabase
             if (op.table === 'products' && op.payload) {
                 const categories = this._loadCache('categories');
-                // category (nombre string) → category_id (UUID)
                 if (op.payload.category && !op.payload.categoryId) {
                     const found = categories.find(c => c.name === op.payload.category);
                     if (found) op.payload.categoryId = found.id;
                 }
                 delete op.payload.category;
+            }
+            // locales: isDefault → is_main (DB usa is_main, no is_default)
+            if (op.table === 'locales' && op.payload && op.payload.isDefault !== undefined) {
+                op.payload.is_main = op.payload.isDefault;
+                delete op.payload.isDefault;
+            }
+            // suppliers: contactPerson → contact_name
+            if (op.table === 'suppliers' && op.payload && op.payload.contactPerson) {
+                op.payload.contact_name = op.payload.contactPerson;
+                delete op.payload.contactPerson;
+            }
+            // warehouses: location → address
+            if (op.table === 'warehouses' && op.payload && op.payload.location) {
+                op.payload.address = op.payload.location;
+                delete op.payload.location;
             }
 
             if (op.operation === 'insert') {
@@ -564,8 +614,19 @@
                 }
             }
             if (table === 'clients') {
-                // credit (frontend) vs creditLimit (DB) — mantener ambos
                 if (obj.credit == null && obj.creditLimit != null) obj.credit = obj.creditLimit;
+            }
+            if (table === 'locales') {
+                if (obj.isDefault == null && obj.isMain != null) obj.isDefault = obj.isMain;
+                if (obj.isDefault == null && obj.is_main != null) obj.isDefault = obj.is_main;
+            }
+            if (table === 'warehouses') {
+                if (obj.location == null && obj.address != null) obj.location = obj.address;
+            }
+            if (table === 'suppliers') {
+                if (obj.contactPerson == null && obj.contact_name != null) obj.contactPerson = obj.contact_name;
+                if (obj.contactPerson == null && obj.contactName != null) obj.contactPerson = obj.contactName;
+            }
             }
             return obj;
         }
