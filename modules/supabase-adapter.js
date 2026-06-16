@@ -64,6 +64,29 @@
                     this._mergeRemoteData(dataStore);
                     this.cloud.hasLoadedCloudData = true;
                 }
+
+                // Cargar datos del tenant (business_name, address, currency) en settings
+                const tenantProfile = global.AppState?.tenant;
+                if (tenantProfile) {
+                    const prof = tenantProfile.profile || tenantProfile;
+                    this.data.settings = {
+                        ...this.data.settings,
+                        businessName: prof.business_name || prof.name || this.data.settings.businessName || '',
+                        taxId: prof.tax_id || this.data.settings.taxId || '',
+                        phone: prof.phone || this.data.settings.phone || '',
+                        address: prof.address || this.data.settings.address || '',
+                        currency: prof.currency || this.data.settings.currency || 'XAF',
+                        billing: {
+                            ...this.data.settings.billing,
+                            legalName: prof.business_name || prof.name || this.data.settings.billing?.legalName || '',
+                            nif: prof.tax_id || this.data.settings.billing?.nif || '',
+                            address: prof.address || this.data.settings.billing?.address || '',
+                            city: prof.city || prof.business_name || this.data.settings.billing?.city || '',
+                        },
+                    };
+                    this.save('settings');
+                }
+
                 this.ensureDefaultLocal();
                 this.ensureLocalScopedData();
                 this._startSupabaseRealtime(dataStore);

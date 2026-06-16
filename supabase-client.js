@@ -24,7 +24,7 @@
     const CONFIG = {
         SYNC_DEBOUNCE_MS: 2000,
         SYNC_BATCH_SIZE: 100,
-        REALTIME_EVENTS_PER_SEC: 10,
+        REALTIME_EVENTS_PER_SEC: 50, // Server-side limit (supabase/config.toml max_events_per_second_per_table). Multi-tenant: todas las tablas comparten este límite.
         MAX_RETRY_ATTEMPTS: 5,
         RETRY_BACKOFF_MS: 3000,
         OFFLINE_AUTH_KEY: 'rw_offline_credentials',
@@ -725,6 +725,7 @@
             this.currentUser = null;
             this.currentTenant = null;
             this.currentRole = null;
+            this._tenantCache = null;
         }
 
         async signUp(email, password, userData = {}) {
@@ -866,44 +867,48 @@
         async resolveTenant(userId) {
             if (!this.supabase) return null;
 
-            // 1. Try RPC to bypass RLS policies that may block direct table reads
-            try {
-                const { data: result, error: rpcErr } = await this.supabase
-                    .rpc('get_user_tenant', { p_user_id: userId });
-
-                if (!rpcErr && result) {
-                    // Defensive: Supabase may return JSONB as a string in some versions
-                    const parsed = (typeof result === 'string') ? JSON.parse(result) : result;
-                    if (parsed && parsed.tenant) {
-                        this.currentRole = parsed.role;
-                        return { ...parsed.tenant, role: parsed.role };
-                    }
-                }
-            } catch (e) {
-                console.warn('[AuthManager] get_user_tenant RPC exception:', e);
+            // Cache en memoria con TTL 30s evita re-resolver en cada signIn
+            if (this._tenantCache?.userId === userId && Date.now() - this._tenantCache?.ts < 30000) {
+                const cached = this._tenantCache.data;
+                this.currentRole = cached.role;
+                return cached;
             }
 
-            // 2. Fallback: query tables directly (works if RLS policies allow self-read)
-            try {
-                const { data: tu, error: tuErr } = await this.supabase
-                    .from('tenant_users')
-                    .select('tenant_id, role')
-                    .eq('user_id', userId)
-                    .maybeSingle();
+            // RPC con timeout + 1 retry si falla transitoriamente
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 10000);
 
-                if (!tuErr && tu) {
-                    const { data: tenant, error: tErr } = await this.supabase
-                        .from('tenants')
-                        .select('*')
-                        .eq('id', tu.tenant_id)
-                        .maybeSingle();
-                    if (!tErr && tenant) {
-                        this.currentRole = tu.role;
-                        return { ...tenant, role: tu.role, tenant_id: tu.tenant_id };
+                    const { data: result, error: rpcErr } = await this.supabase
+                        .rpc('get_user_tenant', { p_user_id: userId });
+
+                    clearTimeout(timeout);
+
+                    if (!rpcErr && result) {
+                        const parsed = (typeof result === 'string') ? JSON.parse(result) : result;
+                        if (parsed?.tenant) {
+                            this.currentRole = parsed.role;
+                            const tenant = { ...parsed.tenant, role: parsed.role };
+                            this._tenantCache = { userId, data: tenant, ts: Date.now() };
+                            return tenant;
+                        }
                     }
+
+                    if (rpcErr && attempt === 0) {
+                        console.warn('[AuthManager] RPC falló, reintentando en 1s:', rpcErr.message);
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue;
+                    }
+                } catch (e) {
+                    if (attempt === 0) {
+                        console.warn('[AuthManager] RPC exception, reintentando:', e.message);
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue;
+                    }
+                    console.warn('[AuthManager] RPC exception tras reintento:', e.message);
                 }
-            } catch (e) {
-                console.warn('[AuthManager] Direct tenant query failed:', e);
+                break;
             }
 
             return null;

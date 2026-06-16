@@ -1769,7 +1769,6 @@
     <!-- 7. Bootstrap -->
     <script>
         (function() {
-            // Sync env.js config to localStorage for consistency
             if (window.ENV?.SUPABASE?.URL && window.ENV?.SUPABASE?.ANON_KEY) {
                 localStorage.setItem('sb_url', window.ENV.SUPABASE.URL);
                 localStorage.setItem('sb_anon_key', window.ENV.SUPABASE.ANON_KEY);
@@ -1777,7 +1776,18 @@
             } else if (!localStorage.getItem('sb_url')) {
                 console.log('[Bootstrap] Supabase not configured yet. Set localStorage sb_url and sb_anon_key, or call SupabaseClient.configure(url, key)');
             }
-            
+
+            function updateTenantName() {
+                const el = document.getElementById('tenantName');
+                if (!el) return;
+                const tenant = window.AppState?.tenant;
+                const name = tenant?.businessName || tenant?.business_name || tenant?.name || '';
+                if (name) { el.textContent = name; return true; }
+                const settings = window.store?.data?.settings;
+                if (settings?.businessName) { el.textContent = settings.businessName; return true; }
+                return false;
+            }
+
             function startApp() {
                 if (typeof AppController !== 'undefined' && AppController.init) {
                     AppController.init();
@@ -1785,7 +1795,16 @@
                     console.error('[Bootstrap] AppController not loaded');
                 }
             }
-            
+
+            // Actualizar tenant name cuando AppState cambie
+            (function watchTenant() {
+                if (updateTenantName()) return;
+                var check = setInterval(function() {
+                    if (updateTenantName()) clearInterval(check);
+                }, 300);
+                setTimeout(function() { clearInterval(check); }, 15000);
+            })();
+
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', startApp);
             } else {

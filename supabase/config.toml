@@ -1,0 +1,32 @@
+[project]
+name = "river-wall-pro"
+plan = "pro"
+
+[auth]
+enabled = true
+site_url = "https://uabenexigmbogoepdbdx.supabase.co"
+additional_redirect_urls = ["*"]
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[realtime]
+enabled = true
+max_events_per_second_per_table = 50
+# Multi-tenant: 50 eventos/seg por tabla compartido entre todos los tenants.
+# Con ~30 tenants activos simultáneos, ~1-2 eventos/seg por tenant es suficiente
+# para POS (ventas, stock, clientes). Ajustar si hay picos >50/seg.
+wal_level = logical
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[analytics]
+enabled = false
