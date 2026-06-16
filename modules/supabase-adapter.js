@@ -467,6 +467,29 @@
                     }
                 }
             }
+            // Products: resolver category name/slug → category_id UUID de forma defensiva
+            if (collection === 'products') {
+                var categories = DS.data && DS.data.categories ? DS.data.categories : [];
+                var rawCategory = cleaned.category_id;
+                if (rawCategory && !isUUID(rawCategory)) {
+                    // Puede ser un nombre de categoría que terminó como category_id
+                    var matchedByName = categories.find(function (c) { return c.name === rawCategory; });
+                    if (matchedByName) {
+                        cleaned.category_id = matchedByName.id;
+                    } else {
+                        // No se pudo resolver: mejor omitir que romper el INSERT
+                        console.warn('[Adapter] cleanPayload: category_id no es UUID y no se encontró categoría:', rawCategory);
+                        delete cleaned.category_id;
+                    }
+                }
+                // Si por algún motivo quedó un campo category (nombre) en el payload,
+                // intentar resolverlo y descartar el nombre.
+                if (cleaned.category) {
+                    var matched = categories.find(function (c) { return c.name === cleaned.category; });
+                    if (matched) cleaned.category_id = matched.id;
+                    delete cleaned.category;
+                }
+            }
             if (!cleaned.id) cleaned.id = genUUID();
             if (typeof cleaned.created_at === 'number') cleaned.created_at = new Date(cleaned.created_at).toISOString();
             if (typeof cleaned.updated_at === 'number') cleaned.updated_at = new Date(cleaned.updated_at).toISOString();
