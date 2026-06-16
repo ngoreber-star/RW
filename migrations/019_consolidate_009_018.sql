@@ -604,9 +604,25 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP PUBLICATION IF EXISTS supabase_realtime;
 CREATE PUBLICATION supabase_realtime FOR TABLE
     products (tenant_id),
-    sales (tenant_id),
+    categories (tenant_id),
     clients (tenant_id),
-    warehouse_stock (tenant_id)
+    sales (tenant_id),
+    purchases (tenant_id),
+    suppliers (tenant_id),
+    warehouses (tenant_id),
+    warehouse_stock (tenant_id),
+    inventory_movements (tenant_id),
+    transfers (tenant_id),
+    pos_terminals (tenant_id),
+    taxes (tenant_id),
+    locales (tenant_id),
+    loyalty_cards (tenant_id),
+    wallet_transactions (tenant_id),
+    crm_coupons (tenant_id),
+    crm_coupon_purchases (tenant_id),
+    reload_requests (tenant_id),
+    discount_campaigns (tenant_id),
+    crm_activities (tenant_id)
 WITH (publish = 'insert,update,delete');
 
 COMMENT ON PUBLICATION supabase_realtime IS

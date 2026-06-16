@@ -153,7 +153,7 @@
                 'transfers', 'posTerminals', 'taxes', 'locales',
                 'loyaltyCards', 'walletTransactions', 'crmCoupons',
                 'crmCouponPurchases', 'reloadRequests', 'discountCampaigns',
-                'crmActivities', 'pendingTickets',
+                'crmActivities',
             ];
             // Suscribir a todas las tablas en un solo canal (todos los .on() antes de .subscribe())
             sbDS.subscribeRealtimeAll(tables, tenantId, (table, payload) => this._applyRealtimeChange(table, payload));
