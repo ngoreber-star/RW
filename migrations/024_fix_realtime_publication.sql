@@ -6,30 +6,36 @@
 -- se propagaran en tiempo real a otros navegadores.
 --
 -- Se recrea la publicación con la lista completa de tablas.
+-- IMPORTANTE: NO se debe especificar una lista de columnas. Cuando se listan
+-- columnas, PostgreSQL exige que la publicación cubra la replica identity para
+-- operaciones UPDATE/DELETE; de lo contrario, las funciones RPC y triggers que
+-- modifican estas tablas fallan con el error 42P10. Publicar todas las columnas
+-- es el comportamiento estándar de Supabase Realtime.
 
 DROP PUBLICATION IF EXISTS supabase_realtime;
 
 CREATE PUBLICATION supabase_realtime FOR TABLE
-    products (tenant_id),
-    categories (tenant_id),
-    clients (tenant_id),
-    sales (tenant_id),
-    purchases (tenant_id),
-    suppliers (tenant_id),
-    warehouses (tenant_id),
-    warehouse_stock (tenant_id),
-    inventory_movements (tenant_id),
-    transfers (tenant_id),
-    pos_terminals (tenant_id),
-    taxes (tenant_id),
-    locales (tenant_id),
-    loyalty_cards (tenant_id),
-    wallet_transactions (tenant_id),
-    crm_coupons (tenant_id),
-    crm_coupon_purchases (tenant_id),
-    reload_requests (tenant_id),
-    discount_campaigns (tenant_id),
-    crm_activities (tenant_id)
+    products,
+    categories,
+    clients,
+    sales,
+    purchases,
+    suppliers,
+    warehouses,
+    warehouse_stock,
+    inventory_movements,
+    transfers,
+    pos_terminals,
+    taxes,
+    locales,
+    loyalty_cards,
+    wallet_transactions,
+    crm_coupons,
+    crm_coupon_purchases,
+    reload_requests,
+    discount_campaigns,
+    crm_activities,
+    alerts
 WITH (publish = 'insert,update,delete');
 
 COMMENT ON PUBLICATION supabase_realtime IS
