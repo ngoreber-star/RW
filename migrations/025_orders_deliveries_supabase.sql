@@ -100,6 +100,9 @@ CREATE INDEX IF NOT EXISTS idx_public_deliveries_tenant ON public_deliveries(ten
 -- Ensure delivery_id column exists in case the table was created by an earlier partial run
 ALTER TABLE public_deliveries ADD COLUMN IF NOT EXISTS delivery_id UUID REFERENCES deliveries(id) ON DELETE CASCADE;
 
+-- Ensure estimated_time is TEXT in public_deliveries (matches deliveries.estimated_time)
+ALTER TABLE public_deliveries ALTER COLUMN estimated_time TYPE TEXT USING estimated_time::TEXT;
+
 ALTER TABLE public_deliveries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS public_deliveries_tracking ON public_deliveries;
 CREATE POLICY public_deliveries_tracking ON public_deliveries
