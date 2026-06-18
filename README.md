@@ -329,15 +329,28 @@ Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
 2. Las transforma a JSON
 3. Las inserta en Supabase vía batch inserts
 
-## Próximos pasos
+## Estado actual del proyecto
 
-1. [x] Crear `004_functions_triggers.sql` con funciones RPC, tabla `alerts` y triggers de stock.
-2. [x] Crear test suite `tests/004_functions_triggers.test.sql`.
-3. [x] Corregir publicación Realtime (`024_fix_realtime_publication.sql`) para soportar UPDATE/DELETE.
-4. [ ] Adaptar `software.html` para usar `SupabaseDataStore` en vez de `DataStore`.
-5. [ ] Migrar `crm-client-app.html` a Supabase.
-6. [ ] Crear script de migración de datos de Firebase.
-7. [ ] Testing offline/online completo.
+| # | Tarea | Estado | Notas |
+|---|---|---|---|
+| 1 | `001_core_schema.sql` — tablas base | ✅ Completado | products, clients, sales, warehouses, etc. |
+| 2 | `002_crm_schema.sql` — tablas CRM | ✅ Completado | wallet, coupons, campaigns, loyalty, activities. |
+| 3 | `003_rls_policies.sql` — seguridad por tenant | ✅ Completado | RLS + función `is_tenant_member`. |
+| 4 | `004_functions_triggers.sql` — funciones y triggers | ✅ Completado | decrement_stock, increment_stock, add_loyalty_points, get_daily_sales, get_low_stock_products, tabla `alerts`, triggers `on_sale_insert`/`on_sale_update`. |
+| 5 | `017`/`019`/`020` checkout atómico | ✅ Completado | `process_complete_checkout` + flag para evitar doble decremento. |
+| 6 | `024_fix_realtime_publication.sql` | ✅ Archivo listo | Debe aplicarse en la base de datos de Supabase para evitar error `42P10`. |
+| 7 | `tests/004_functions_triggers.test.sql` | ✅ Completado | 13/13 tests PASS en base de staging. |
+| 8 | Adaptar `software.html` al cliente de Supabase | ❌ Pendiente | Archivo principal del POS. Requiere refactor importante. |
+| 9 | Migrar `crm-client-app.html` a Supabase | ❌ Pendiente | Panel CRM. |
+| 10 | Script de migración Firebase → Supabase | ❌ Pendiente | `scripts/migrate-firebase-to-supabase.js`. |
+| 11 | Testing offline/online completo | ❌ Pendiente | Validar cola de sync y fallback offline. |
+
+## Próximos pasos recomendados
+
+1. [ ] Adaptar `software.html` para usar `SupabaseDataStore` en vez de `DataStore`.
+2. [ ] Migrar `crm-client-app.html` a Supabase.
+3. [ ] Crear script de migración de datos de Firebase.
+4. [ ] Testing offline/online completo.
 
 ## Soporte
 
