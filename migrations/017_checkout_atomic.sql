@@ -58,13 +58,14 @@ BEGIN
         );
     END IF;
 
-    -- Generar número de venta atómicamente (con bloqueo)
+    -- Generar número de venta atómicamente (con bloqueo por advisory lock)
     v_year_prefix := 'S' || TO_CHAR(NOW(), 'YYYY');
+    PERFORM pg_advisory_xact_lock(hashtext(v_tenant_id::TEXT || v_year_prefix));
+
     SELECT COALESCE(MAX(NULLIF(regexp_replace(sale_number, '^S\d{4}', ''), '')), '0')::INTEGER + 1
     INTO v_next_num
     FROM sales
-    WHERE tenant_id = v_tenant_id AND sale_number LIKE v_year_prefix || '%'
-    FOR UPDATE;
+    WHERE tenant_id = v_tenant_id AND sale_number LIKE v_year_prefix || '%';
 
     v_sale_number := v_year_prefix || LPAD(v_next_num::TEXT, 6, '0');
 
