@@ -157,12 +157,32 @@ CREATE TRIGGER trg_sync_public_delivery
     EXECUTE FUNCTION sync_public_delivery();
 
 -- ============================================
--- 5. ADD TABLES TO REALTIME PUBLICATION
+-- 5. ADD TABLES TO REALTIME PUBLICATION (idempotent)
 -- ============================================
 
-ALTER PUBLICATION supabase_realtime ADD TABLE orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE deliveries;
-ALTER PUBLICATION supabase_realtime ADD TABLE public_deliveries;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND tablename = 'orders'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND tablename = 'deliveries'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE deliveries;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND tablename = 'public_deliveries'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public_deliveries;
+    END IF;
+END $$;
 
 -- ============================================
 -- 6. RPC: get_public_delivery_by_tracking (for portal)
