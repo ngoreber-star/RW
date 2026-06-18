@@ -340,17 +340,44 @@ Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
 | 5 | `017`/`019`/`020` checkout atómico | ✅ Completado | `process_complete_checkout` + flag para evitar doble decremento. |
 | 6 | `024_fix_realtime_publication.sql` | ✅ Archivo listo | Debe aplicarse en la base de datos de Supabase para evitar error `42P10`. |
 | 7 | `tests/004_functions_triggers.test.sql` | ✅ Completado | 13/13 tests PASS en base de staging. |
-| 8 | Adaptar `software.html` al cliente de Supabase | ❌ Pendiente | Archivo principal del POS. Requiere refactor importante. |
+| 8 | Adaptar `software.html` al cliente de Supabase | ⚠️ Parcial | Ver sección "Adaptación de software.html" más abajo. |
 | 9 | Migrar `crm-client-app.html` a Supabase | ❌ Pendiente | Panel CRM. |
 | 10 | Script de migración Firebase → Supabase | ❌ Pendiente | `scripts/migrate-firebase-to-supabase.js`. |
 | 11 | Testing offline/online completo | ❌ Pendiente | Validar cola de sync y fallback offline. |
 
+## Adaptación de `software.html`
+
+`software.html` **no está completamente reescrito para Supabase**. Actualmente opera en modo **híbrido/compatibility**:
+
+### Qué sí funciona con Supabase
+
+- Autenticación y login de usuarios (`supabase-client.js`).
+- Carga inicial de datos (`connectCloud` → `dataStore.syncAllTables`).
+- Sincronización CRUD básica de productos, clientes, ventas, etc. (`supabase-adapter.js` hace monkey-patching de `DataStore.prototype.add/update/delete`).
+- Stock: `commitSaleStockOperation` llama a `decrement_stock` vía RPC.
+- Puntos de fidelidad: `saveSaleRecord` llama a `add_loyalty_points` vía RPC.
+- Pagos a crédito: `registerCreditPayment` usa `register_credit_payment` vía RPC.
+- Realtime para sincronización entre cajas (`subscribeRealtimeAll`).
+
+### Qué aún depende de Firestore / capa de compatibilidad
+
+- `modules/data-store.js` contiene la lógica original de Firestore (`collection`, `doc`, `getDocs`, `onSnapshot`, `saveToSubcollections`).
+- `modules/ui-controller.js` usa Firestore en funcionalidades secundarias: pedidos entrantes (`incoming_orders`), entregas (`deliveries`), pedidos públicos (`publicOrders`), chat web, resultados de entrenamiento y configuración de tienda pública.
+- `modules/app-controller.js` también referencia Firestore para licencias y tenants en modo legacy.
+- `modules/firebase-compat.js` es un stub que evita que el código legacy falle al cargar.
+- `modules/firestore-compat.js` traduce llamadas Firestore a Supabase, pero no cubre todas las funcionalidades.
+
+### Conclusión
+
+El POS **puede funcionar** para el flujo principal de ventas y catálogo gracias a `supabase-adapter.js`, pero no es una adaptación nativa. Una reescritura completa implicaría reemplazar `data-store.js` y `ui-controller.js` por módulos diseñados directamente para Supabase.
+
 ## Próximos pasos recomendados
 
-1. [ ] Adaptar `software.html` para usar `SupabaseDataStore` en vez de `DataStore`.
-2. [ ] Migrar `crm-client-app.html` a Supabase.
-3. [ ] Crear script de migración de datos de Firebase.
-4. [ ] Testing offline/online completo.
+1. [ ] Decidir si se mantiene la arquitectura híbrida (adapter + compat) o se reescribe `software.html` nativamente para Supabase.
+2. [ ] Si se mantiene híbrido: migrar las funcionalidades de Firestore restantes (pedidos, entregas, chat, training) a Supabase vía `firestore-compat.js` o nuevas RPC.
+3. [ ] Migrar `crm-client-app.html` a Supabase.
+4. [ ] Crear script de migración de datos de Firebase.
+5. [ ] Testing offline/online completo.
 
 ## Soporte
 
