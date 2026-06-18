@@ -128,6 +128,9 @@ BEGIN
 
     v_sale_number := v_year_prefix || LPAD(v_next_num::TEXT, 6, '0');
 
+    -- Skip automatic stock triggers; we handle stock and inventory movements manually here
+    PERFORM set_config('app.skip_sale_stock_trigger', 'true', true);
+
     INSERT INTO sales (
         id, tenant_id, sale_local_id, sale_number, client_id, user_id, locale_id,
         items, subtotal, tax_total, discount_total, total,
@@ -183,6 +186,9 @@ BEGIN
             );
         END IF;
     END LOOP;
+
+    -- Restore automatic stock triggers for other operations in the same transaction
+    PERFORM set_config('app.skip_sale_stock_trigger', 'false', true);
 
     IF v_payment_method = 'wallet' AND v_client_id IS NOT NULL AND v_wallet_amount > 0 THEN
         IF NOT EXISTS (

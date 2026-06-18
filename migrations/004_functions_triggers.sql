@@ -1,12 +1,92 @@
 -- ============================================
 -- RIVER-WALL PRO - RPC Functions & Triggers
 -- Helper functions for POS operations
+-- Adapted to the real schema: sales.items JSONB, sales.status, etc.
 -- ============================================
+
+-- ============================================
+-- 0. ALERTS TABLE (for low-stock notifications)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    alert_type TEXT NOT NULL DEFAULT 'low_stock' CHECK (alert_type IN ('low_stock','out_of_stock','expiration','system')),
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_alerts_tenant ON alerts(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_unread ON alerts(tenant_id, is_read) WHERE is_read = false;
+
+-- Enable RLS on alerts and add tenant isolation
+ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS alerts_isolation ON alerts;
+CREATE POLICY alerts_isolation ON alerts
+    FOR ALL USING (is_tenant_member(tenant_id));
 
 -- ============================================
 -- 1. STOCK MANAGEMENT
 -- ============================================
 
+-- New canonical signature requested by the user:
+-- decrement_stock(p_tenant_id, p_product_id, p_quantity)
+CREATE OR REPLACE FUNCTION decrement_stock(
+    p_tenant_id UUID,
+    p_product_id UUID,
+    p_quantity INTEGER
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_new_stock INTEGER;
+    v_min_stock INTEGER;
+    v_product_name TEXT;
+BEGIN
+    -- Verify the product belongs to the tenant
+    IF NOT EXISTS (
+        SELECT 1 FROM products
+        WHERE id = p_product_id AND tenant_id = p_tenant_id
+    ) THEN
+        RAISE EXCEPTION 'Product % does not belong to tenant %', p_product_id, p_tenant_id;
+    END IF;
+
+    -- Decrement stock (do not go below 0)
+    UPDATE products
+    SET stock = GREATEST(stock - p_quantity, 0),
+        updated_at = NOW()
+    WHERE id = p_product_id AND tenant_id = p_tenant_id
+    RETURNING stock, min_stock, name
+    INTO v_new_stock, v_min_stock, v_product_name;
+
+    -- Insert a low-stock alert if needed (avoid duplicate unread alerts)
+    IF v_new_stock < v_min_stock THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM alerts
+            WHERE tenant_id = p_tenant_id
+              AND product_id = p_product_id
+              AND alert_type IN ('low_stock', 'out_of_stock')
+              AND is_read = false
+        ) THEN
+            INSERT INTO alerts (tenant_id, product_id, alert_type, message, metadata)
+            VALUES (
+                p_tenant_id,
+                p_product_id,
+                CASE WHEN v_new_stock = 0 THEN 'out_of_stock' ELSE 'low_stock' END,
+                'Stock bajo para ' || v_product_name || ': ' || v_new_stock || ' unidades (min: ' || v_min_stock || ')',
+                jsonb_build_object('current_stock', v_new_stock, 'min_stock', v_min_stock)
+            );
+        END IF;
+    END IF;
+
+    RETURN v_new_stock;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backward-compatible signature used by legacy code
 CREATE OR REPLACE FUNCTION decrement_stock(
     p_product_id UUID,
     p_quantity INTEGER,
@@ -14,13 +94,38 @@ CREATE OR REPLACE FUNCTION decrement_stock(
 )
 RETURNS VOID AS $$
 BEGIN
-    UPDATE products
-    SET stock = GREATEST(stock - p_quantity, 0),
-        updated_at = NOW()
-    WHERE id = p_product_id AND tenant_id = p_tenant_id;
+    PERFORM decrement_stock(p_tenant_id, p_product_id, p_quantity);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- New canonical signature requested by the user
+CREATE OR REPLACE FUNCTION increment_stock(
+    p_tenant_id UUID,
+    p_product_id UUID,
+    p_quantity INTEGER
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_new_stock INTEGER;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM products
+        WHERE id = p_product_id AND tenant_id = p_tenant_id
+    ) THEN
+        RAISE EXCEPTION 'Product % does not belong to tenant %', p_product_id, p_tenant_id;
+    END IF;
+
+    UPDATE products
+    SET stock = stock + p_quantity,
+        updated_at = NOW()
+    WHERE id = p_product_id AND tenant_id = p_tenant_id
+    RETURNING stock INTO v_new_stock;
+
+    RETURN v_new_stock;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backward-compatible signature used by legacy code
 CREATE OR REPLACE FUNCTION increment_stock(
     p_product_id UUID,
     p_quantity INTEGER,
@@ -28,10 +133,7 @@ CREATE OR REPLACE FUNCTION increment_stock(
 )
 RETURNS VOID AS $$
 BEGIN
-    UPDATE products
-    SET stock = stock + p_quantity,
-        updated_at = NOW()
-    WHERE id = p_product_id AND tenant_id = p_tenant_id;
+    PERFORM increment_stock(p_tenant_id, p_product_id, p_quantity);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -56,6 +158,39 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 2. LOYALTY & WALLET
 -- ============================================
 
+-- New canonical signature requested by the user
+CREATE OR REPLACE FUNCTION add_loyalty_points(
+    p_tenant_id UUID,
+    p_client_id UUID,
+    p_points INTEGER
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_total_points INTEGER;
+BEGIN
+    -- Verify the client belongs to the tenant
+    IF NOT EXISTS (
+        SELECT 1 FROM clients
+        WHERE id = p_client_id AND tenant_id = p_tenant_id
+    ) THEN
+        RAISE EXCEPTION 'Client % does not belong to tenant %', p_client_id, p_tenant_id;
+    END IF;
+
+    UPDATE clients
+    SET loyalty_points = LEAST(COALESCE(loyalty_points, 0) + p_points, 2147483647),
+        updated_at = NOW()
+    WHERE id = p_client_id AND tenant_id = p_tenant_id
+    RETURNING loyalty_points INTO v_total_points;
+
+    -- Log activity
+    INSERT INTO crm_activities (tenant_id, client_id, activity_type, description, points)
+    VALUES (p_tenant_id, p_client_id, 'points_earned', 'Puntos ganados por compra', p_points);
+
+    RETURN v_total_points;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backward-compatible signature used by legacy code
 CREATE OR REPLACE FUNCTION add_loyalty_points(
     p_client_id UUID,
     p_points INTEGER,
@@ -63,14 +198,7 @@ CREATE OR REPLACE FUNCTION add_loyalty_points(
 )
 RETURNS VOID AS $$
 BEGIN
-    UPDATE clients
-    SET loyalty_points = COALESCE(loyalty_points, 0) + p_points,
-        updated_at = NOW()
-    WHERE id = p_client_id AND tenant_id = p_tenant_id;
-
-    -- Log activity
-    INSERT INTO crm_activities (tenant_id, client_id, activity_type, description, points)
-    VALUES (p_tenant_id, p_client_id, 'points_earned', 'Puntos ganados por compra', p_points);
+    PERFORM add_loyalty_points(p_tenant_id, p_client_id, p_points);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -203,6 +331,70 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Daily sales summary as JSON
+CREATE OR REPLACE FUNCTION get_daily_sales(
+    p_tenant_id UUID,
+    p_date DATE
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_total_ventas NUMERIC;
+    v_cantidad_transacciones BIGINT;
+    v_total_efectivo NUMERIC;
+    v_total_tarjeta NUMERIC;
+    v_total_wallet NUMERIC;
+BEGIN
+    SELECT
+        COALESCE(SUM(total), 0),
+        COUNT(*),
+        COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN payment_method = 'wallet' THEN total ELSE 0 END), 0)
+    INTO
+        v_total_ventas,
+        v_cantidad_transacciones,
+        v_total_efectivo,
+        v_total_tarjeta,
+        v_total_wallet
+    FROM sales
+    WHERE tenant_id = p_tenant_id
+      AND status = 'completed'
+      AND DATE(created_at) = p_date;
+
+    RETURN jsonb_build_object(
+        'total_ventas', v_total_ventas,
+        'cantidad_transacciones', v_cantidad_transacciones,
+        'total_efectivo', v_total_efectivo,
+        'total_tarjeta', v_total_tarjeta,
+        'total_wallet', v_total_wallet
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Low stock products as a JSON array
+CREATE OR REPLACE FUNCTION get_low_stock_products(p_tenant_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+    RETURN (
+        SELECT COALESCE(jsonb_agg(
+            jsonb_build_object(
+                'id', p.id,
+                'name', p.name,
+                'stock', p.stock,
+                'min_stock', p.min_stock,
+                'category_id', p.category_id,
+                'price', p.price
+            )
+            ORDER BY p.stock ASC
+        ), '[]'::jsonb)
+        FROM products p
+        WHERE p.tenant_id = p_tenant_id
+          AND p.stock <= p.min_stock
+          AND p.is_active = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ============================================
 -- 5. TENANT MANAGEMENT (SuperAdmin)
 -- ============================================
@@ -241,30 +433,108 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- 6. LOW STOCK ALERTS
+-- 6. SALES TRIGGERS (stock automation)
 -- ============================================
 
-CREATE OR REPLACE FUNCTION get_low_stock_products(p_tenant_id UUID)
-RETURNS TABLE(
-    product_id UUID,
-    product_name TEXT,
-    current_stock INTEGER,
-    min_stock INTEGER
-) AS $$
+-- Allow 'pending' status for unpaid tickets/orders
+ALTER TABLE sales
+    DROP CONSTRAINT IF EXISTS sales_status_check,
+    ADD CONSTRAINT sales_status_check
+    CHECK (status IN ('pending','completed','credit','cancelled','refunded'));
+
+-- Helper to safely read the session flag that skips automatic stock handling
+CREATE OR REPLACE FUNCTION _should_skip_sale_stock_trigger()
+RETURNS BOOLEAN AS $$
 BEGIN
-    RETURN QUERY
-    SELECT
-        p.id as product_id,
-        p.name as product_name,
-        p.stock as current_stock,
-        p.min_stock
-    FROM products p
-    WHERE p.tenant_id = p_tenant_id
-      AND p.stock <= p.min_stock
-      AND p.is_active = true
-    ORDER BY p.stock ASC;
+    RETURN COALESCE(current_setting('app.skip_sale_stock_trigger', true), 'false') = 'true';
+EXCEPTION WHEN OTHERS THEN
+    RETURN false;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger function: on_sale_insert
+CREATE OR REPLACE FUNCTION trg_on_sale_insert()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_item JSONB;
+    v_product_id UUID;
+    v_qty INTEGER;
+BEGIN
+    -- Skip if the caller already handled stock manually (e.g. process_complete_checkout)
+    IF _should_skip_sale_stock_trigger() THEN
+        RETURN NEW;
+    END IF;
+
+    -- Skip unpaid/pending tickets
+    IF NEW.status = 'pending' THEN
+        RETURN NEW;
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(NEW.items, '[]'::JSONB))
+    LOOP
+        v_product_id := (v_item->>'productId')::UUID;
+        v_qty := COALESCE((v_item->>'quantity')::INTEGER, (v_item->>'qty')::INTEGER, 0);
+
+        IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+            PERFORM decrement_stock(NEW.tenant_id, v_product_id, v_qty);
+        END IF;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_sale_insert ON sales;
+CREATE TRIGGER on_sale_insert
+    AFTER INSERT ON sales
+    FOR EACH ROW
+    EXECUTE FUNCTION trg_on_sale_insert();
+
+-- Trigger function: on_sale_update
+CREATE OR REPLACE FUNCTION trg_on_sale_update()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_item JSONB;
+    v_product_id UUID;
+    v_qty INTEGER;
+BEGIN
+    IF _should_skip_sale_stock_trigger() THEN
+        RETURN NEW;
+    END IF;
+
+    -- pending -> completed (equivalent to pending -> paid)
+    IF OLD.status = 'pending' AND NEW.status = 'completed' THEN
+        FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(NEW.items, '[]'::JSONB))
+        LOOP
+            v_product_id := (v_item->>'productId')::UUID;
+            v_qty := COALESCE((v_item->>'quantity')::INTEGER, (v_item->>'qty')::INTEGER, 0);
+            IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+                PERFORM decrement_stock(NEW.tenant_id, v_product_id, v_qty);
+            END IF;
+        END LOOP;
+    END IF;
+
+    -- completed -> cancelled or refunded
+    IF OLD.status = 'completed' AND NEW.status IN ('cancelled', 'refunded') THEN
+        FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(NEW.items, '[]'::JSONB))
+        LOOP
+            v_product_id := (v_item->>'productId')::UUID;
+            v_qty := COALESCE((v_item->>'quantity')::INTEGER, (v_item->>'qty')::INTEGER, 0);
+            IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+                PERFORM increment_stock(NEW.tenant_id, v_product_id, v_qty);
+            END IF;
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_sale_update ON sales;
+CREATE TRIGGER on_sale_update
+    AFTER UPDATE ON sales
+    FOR EACH ROW
+    EXECUTE FUNCTION trg_on_sale_update();
 
 -- ============================================
 -- 7. TRIGGER: Auto-update client tier based on spending
@@ -300,6 +570,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trg_update_client_tier ON sales;
 CREATE TRIGGER trg_update_client_tier
     AFTER INSERT ON sales
     FOR EACH ROW
@@ -307,7 +578,7 @@ CREATE TRIGGER trg_update_client_tier
     EXECUTE FUNCTION update_client_tier();
 
 -- ============================================
--- 6. USER MANAGEMENT (Admin-only RPC)
+-- 8. USER MANAGEMENT (Admin-only RPC)
 -- ============================================
 
 CREATE OR REPLACE FUNCTION create_user_for_tenant(
@@ -464,3 +735,19 @@ BEGIN
     ORDER BY tu.created_at DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 9. RPC SECURITY: only authenticated users
+-- ============================================
+
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM anon;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+
+-- Ensure future functions created in this schema are also restricted
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT EXECUTE ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    REVOKE EXECUTE ON FUNCTIONS FROM anon;
+
+-- Service role (used by edge functions) can still execute everything by default
+-- because it bypasses RLS and role grants in Supabase.
