@@ -372,6 +372,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Low stock products as a JSON array
+-- NOTE: return type changed from TABLE to JSONB, so we must drop the old signature first.
+DROP FUNCTION IF EXISTS get_low_stock_products(UUID);
+
 CREATE OR REPLACE FUNCTION get_low_stock_products(p_tenant_id UUID)
 RETURNS JSONB AS $$
 BEGIN
