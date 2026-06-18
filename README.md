@@ -15,29 +15,58 @@ Migración de RIVER-WALL PRO desde Firebase Firestore a **Supabase** (PostgreSQL
 | **Supabase Free** | **500MB + 500K writes/mes** | **$0** |
 | **Supabase Pro** | **8GB + ilimitado** | **$25/mes** (para 200+ negocios) |
 
-## Estructura creada
+## Estructura del proyecto
 
 ```
 RIVER-WALL SUPABASE/
 ├── migrations/
-│   ├── 001_core_schema.sql      -- Tablas base (products, clients, sales, warehouses, etc.)
-│   ├── 002_crm_schema.sql       -- Tablas CRM (wallet, coupons, campaigns, loyalty)
-│   ├── 003_rls_policies.sql     -- Row Level Security por tenant
-│   └── 004_functions_triggers.sql -- (próximo) Funciones y triggers avanzados
-├── supabase-client.js           -- Cliente offline-first + cola de sync
-├── offline-mode.js              -- Fallback cuando no hay internet ni Supabase
-├── sw.js                        -- Service Worker PWA (cachea assets + Supabase SDK)
-├── manifest.webmanifest         -- Configuración PWA
-└── README.md                    -- Este archivo
+│   ├── 001_core_schema.sql            -- Tablas base (products, clients, sales, warehouses, etc.)
+│   ├── 002_crm_schema.sql             -- Tablas CRM (wallet, coupons, campaigns, loyalty)
+│   ├── 003_rls_policies.sql           -- Row Level Security por tenant
+│   ├── 004_functions_triggers.sql     -- Funciones RPC, tabla alerts y triggers de stock
+│   ├── 005_superadmin_schema.sql      -- Schema y funciones para superadmin
+│   ├── 006_bootstrap_superadmin.sql   -- Bootstrap inicial del superadmin
+│   ├── 007_superadmin_panel_rpc.sql   -- RPCs del panel de superadmin
+│   ├── 008_fix_user_creation.sql      -- Correcciones en creación de usuarios
+│   ├── 009_fix_rls_recursion.sql      -- Fix recursión en RLS
+│   ├── 010_bypass_rls_resolve_tenant.sql -- Resolución de tenant
+│   ├── 011_bootstrap_superadmin_rpc.sql  -- RPCs bootstrap superadmin
+│   ├── 012_fix_tenant_creation.sql    -- Correcciones creación de tenants
+│   ├── 015_audit_logs.sql             -- Logs de auditoría
+│   ├── 016_inventory_movements_columns.sql -- Columnas adicionales en movimientos
+│   ├── 017_checkout_atomic.sql        -- Checkout atómico (process_complete_checkout)
+│   ├── 018_confirm_wallet_payment.sql -- Confirmación de pagos wallet
+│   ├── 019_consolidate_009_018.sql    -- Consolidación de fixes anteriores
+│   ├── 020_fix_json_validation.sql    -- Validación JSON + fixes en checkout
+│   ├── 020_granular_rls_policies.sql  -- Políticas RLS granulares
+│   ├── 021_fix_granular_rls.sql       -- Fixes RLS granular
+│   ├── 022_fix_performance_indexes.sql -- Índices de rendimiento
+│   ├── 023_fix_missing_columns.sql    -- Columnas faltantes
+│   └── 024_fix_realtime_publication.sql -- Fix publicación Realtime (todas las columnas)
+├── tests/
+│   ├── 004_functions_triggers.test.sql   -- Test suite SQL para funciones y triggers
+│   ├── checkout-atomicity.test.js
+│   ├── conflict-resolution.test.js
+│   ├── sync-queue.test.js
+│   ├── tenant-resolution.test.js
+│   └── setup.js
+├── scripts/
+│   ├── supabase-client.js         -- Cliente offline-first + cola de sync
+│   ├── offline-mode.js            -- Fallback cuando no hay internet ni Supabase
+│   ├── sw.js                      -- Service Worker PWA
+│   └── manifest.webmanifest       -- Configuración PWA
+└── README.md                      -- Este archivo
 ```
 
 ## Requisitos previos
 
 1. Crear proyecto en [supabase.com](https://supabase.com)
 2. Ir a Project Settings → API → copiar `URL` y `anon public`
-3. Ir a SQL Editor → New query → pegar las migrations 001, 002, 003
+3. Ir a SQL Editor → New query → pegar las migrations en orden numérico (001 a 024)
 4. Ir a Authentication → Settings → desactivar "Confirm email" (para POS rápido)
 5. Opcional: ir to Authentication → Providers → activar "Phone" si quieres SMS
+
+> **Nota importante:** La migración `024_fix_realtime_publication.sql` debe aplicarse para evitar errores `42P10` cuando funciones o triggers hagan `UPDATE`/`DELETE` en tablas suscritas a Realtime. No uses listas de columnas en la publicación.
 
 ## Configuración en `software.html`
 
@@ -111,62 +140,111 @@ dataStore.insert('products', newProduct); // Guarda local + encola sync
 await supabase.from('products').insert({ ...newProduct, tenant_id: tenantId });
 
 // Actualizar stock
-dataStore.update('products', productId, { stock: newStock });
+await supabase.rpc('decrement_stock', {
+    p_tenant_id: tenantId,
+    p_product_id: productId,
+    p_quantity: qty,
+});
 ```
 
 ### 4. Guardar una venta (POS checkout)
 
-#### Antes
-```javascript
-saveSaleRecord(sale);
-store.scheduleCloudSave(); // Re-escribía TODO a Firestore (~1,200 docs)
-```
+#### Opción A: Insert directo + triggers automáticos
 
-#### Después
+Desde `004_functions_triggers.sql`, los triggers `on_sale_insert` y `on_sale_update` manejan el stock automáticamente:
+
 ```javascript
 async function saveSaleRecord(sale) {
-    // 1. Insertar venta
     const { data: saleData, error: saleError } = await supabase
         .from('sales')
-        .insert({ ...sale, tenant_id: tenantId })
+        .insert({
+            ...sale,
+            tenant_id: tenantId,
+            status: sale.isPending ? 'pending' : 'completed'
+        })
         .select()
         .single();
 
     if (saleError) throw saleError;
 
-    // 2. Actualizar stock de cada item (batch opcional)
-    for (const item of sale.items) {
-        await supabase.rpc('decrement_stock', {
-            p_product_id: item.productId,
-            p_quantity: item.quantity,
-            p_tenant_id: tenantId,
-        });
-    }
+    // Stock, inventory_movements y alerts se manejan automáticamente
+    // por los triggers on_sale_insert / on_sale_update.
 
-    // 3. Si es wallet, crear wallet_transaction
-    if (sale.paymentMethod === 'wallet' && sale.clientId) {
-        await supabase.from('wallet_transactions').insert({
-            tenant_id: tenantId,
-            client_id: sale.clientId,
-            type: 'debit',
-            amount: sale.total,
-            description: `Compra ${saleData.sale_number}`,
-            reference_id: saleData.id,
-            reference_type: 'sale',
-        });
-    }
-
-    // 4. CRM: loyalty points
-    const points = Math.floor(sale.total / 1000);
-    if (points > 0) {
-        await supabase.rpc('add_loyalty_points', {
-            p_client_id: sale.clientId,
-            p_points: points,
-            p_tenant_id: tenantId,
-        });
-    }
+    return saleData;
 }
 ```
+
+#### Opción B: Checkout atómico (recomendado)
+
+```javascript
+async function saveSaleRecord(sale) {
+    const { data, error } = await supabase.rpc('process_complete_checkout', {
+        p_sale_payload: {
+            tenant_id: tenantId,
+            items: sale.items,
+            total: sale.total,
+            payment_method: sale.paymentMethod,
+            status: 'completed',
+            client_id: sale.clientId,
+            user_id: sale.userId,
+        }
+    });
+
+    if (error) throw error;
+    return data;
+}
+```
+
+#### CRM: loyalty points
+
+```javascript
+const points = Math.floor(sale.total / 1000);
+if (points > 0 && sale.clientId) {
+    const { data: totalPoints } = await supabase.rpc('add_loyalty_points', {
+        p_tenant_id: tenantId,
+        p_client_id: sale.clientId,
+        p_points: points,
+    });
+    console.log('Puntos totales:', totalPoints);
+}
+```
+
+## Funciones RPC disponibles
+
+| Función | Parámetros | Retorno | Descripción |
+|---|---|---|---|
+| `decrement_stock` | `p_tenant_id, p_product_id, p_quantity` | `INTEGER` | Descuenta stock, genera alerta si baja del mínimo. |
+| `increment_stock` | `p_tenant_id, p_product_id, p_quantity` | `INTEGER` | Devuelve stock (por anulaciones/devoluciones). |
+| `add_loyalty_points` | `p_tenant_id, p_client_id, p_points` | `INTEGER` | Suma puntos y retorna el total. |
+| `get_daily_sales` | `p_tenant_id, p_date` | `JSONB` | `{total_ventas, cantidad_transacciones, total_efectivo, total_tarjeta, total_wallet}` |
+| `get_low_stock_products` | `p_tenant_id` | `JSONB` | Array de productos con `stock <= min_stock`. |
+| `process_complete_checkout` | `p_sale_payload` | `JSONB` | Checkout atómico: venta + stock + wallet + crédito + puntos. |
+| `register_credit_payment` | `p_sale_id, p_amount, p_tenant_id` | `NUMERIC` | Registra abono a venta a crédito. |
+| `get_sales_summary` | `p_tenant_id, p_start_date, p_end_date` | `TABLE` | Resumen de ventas por rango de fechas. |
+| `get_top_products` | `p_tenant_id, p_start_date, p_end_date, p_limit` | `TABLE` | Productos más vendidos. |
+| `create_tenant_for_user` | `p_user_id, p_business_name, p_email, p_plan` | `UUID` | Crea tenant con datos por defecto. |
+
+## Triggers de stock
+
+| Trigger | Evento | Acción |
+|---|---|---|
+| `on_sale_insert` | `AFTER INSERT ON sales` | Descuenta stock de cada item si `status != 'pending'`. |
+| `on_sale_update` | `AFTER UPDATE ON sales` | `pending → completed` descuenta; `completed → cancelled/refunded` devuelve. |
+| `trg_update_client_tier` | `AFTER INSERT ON sales` | Actualiza tier del cliente según gasto acumulado. |
+
+## Tabla `alerts`
+
+Genera alertas automáticas cuando el stock de un producto queda por debajo del mínimo:
+
+```sql
+SELECT * FROM alerts WHERE tenant_id = :tenant_id AND is_read = false;
+```
+
+Tipos de alerta:
+- `low_stock`
+- `out_of_stock`
+- `expiration`
+- `system`
 
 ## Flujo offline-first
 
@@ -210,6 +288,8 @@ dataStore.subscribeRealtime('sales', tenantId, (payload) => {
 });
 ```
 
+> **Importante:** La publicación `supabase_realtime` debe incluir **todas las columnas** de las tablas (no una lista parcial), de lo contrario los triggers y RPCs que actualizan estas tablas fallarán con `42P10`. Ver `024_fix_realtime_publication.sql`.
+
 ## PWA / Instalación
 
 1. Registrar service worker en `software.html`:
@@ -227,6 +307,21 @@ if ('serviceWorker' in navigator) {
 
 3. El usuario puede "Instalar" desde Chrome/Edge como una app nativa.
 
+## Testing
+
+Existe una test suite SQL para validar las funciones y triggers:
+
+```
+tests/004_functions_triggers.test.sql
+```
+
+Para ejecutarla:
+
+1. Aplica todas las migraciones en orden (001 a 024).
+2. Abre el SQL Editor de Supabase.
+3. Copia y pega `tests/004_functions_triggers.test.sql`.
+4. Ejecuta y revisa la columna `result` (esperado: todos `PASS`).
+
 ## Migración de datos (Firebase → Supabase)
 
 Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
@@ -236,11 +331,13 @@ Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
 
 ## Próximos pasos
 
-1. [ ] Crear `004_functions_triggers.sql` con funciones RPC (decrement_stock, add_loyalty_points, etc.)
-2. [ ] Adaptar `software.html` para usar `SupabaseDataStore` en vez de `DataStore`
-3. [ ] Migrar `crm-client-app.html` a Supabase
-4. [ ] Crear script de migración de datos
-5. [ ] Testing offline/online
+1. [x] Crear `004_functions_triggers.sql` con funciones RPC, tabla `alerts` y triggers de stock.
+2. [x] Crear test suite `tests/004_functions_triggers.test.sql`.
+3. [x] Corregir publicación Realtime (`024_fix_realtime_publication.sql`) para soportar UPDATE/DELETE.
+4. [ ] Adaptar `software.html` para usar `SupabaseDataStore` en vez de `DataStore`.
+5. [ ] Migrar `crm-client-app.html` a Supabase.
+6. [ ] Crear script de migración de datos de Firebase.
+7. [ ] Testing offline/online completo.
 
 ## Soporte
 
