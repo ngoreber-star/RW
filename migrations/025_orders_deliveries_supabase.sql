@@ -97,6 +97,9 @@ CREATE TABLE IF NOT EXISTS public_deliveries (
 CREATE INDEX IF NOT EXISTS idx_public_deliveries_tracking ON public_deliveries(tracking_code);
 CREATE INDEX IF NOT EXISTS idx_public_deliveries_tenant ON public_deliveries(tenant_id);
 
+-- Ensure delivery_id column exists in case the table was created by an earlier partial run
+ALTER TABLE public_deliveries ADD COLUMN IF NOT EXISTS delivery_id UUID REFERENCES deliveries(id) ON DELETE CASCADE;
+
 ALTER TABLE public_deliveries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS public_deliveries_tracking ON public_deliveries;
 CREATE POLICY public_deliveries_tracking ON public_deliveries
