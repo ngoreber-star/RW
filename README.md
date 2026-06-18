@@ -310,18 +310,23 @@ if ('serviceWorker' in navigator) {
 
 ## Testing
 
-Existe una test suite SQL para validar las funciones y triggers:
+Existen test suites SQL para validar funciones, triggers y migraciones:
 
 ```
-tests/004_functions_triggers.test.sql
+tests/004_functions_triggers.test.sql   -- 13 tests (functions + triggers + stock automation)
+tests/025_orders_deliveries.test.sql    -- 5 tests (orders + deliveries + public deliveries)
 ```
 
-Para ejecutarla:
+Para ejecutarlas:
 
-1. Aplica todas las migraciones en orden (001 a 024).
+1. Aplica todas las migraciones en orden (001 a 025).
 2. Abre el SQL Editor de Supabase.
-3. Copia y pega `tests/004_functions_triggers.test.sql`.
+3. Copia y pega el test correspondiente.
 4. Ejecuta y revisa la columna `result` (esperado: todos `PASS`).
+
+Resultados validados en staging:
+- `004_functions_triggers.test.sql`: **13/13 PASS**
+- `025_orders_deliveries.test.sql`: **5/5 PASS**
 
 ## Migración de datos (Firebase → Supabase)
 
@@ -339,13 +344,13 @@ Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
 | 3 | `003_rls_policies.sql` — seguridad por tenant | ✅ Completado | RLS + función `is_tenant_member`. |
 | 4 | `004_functions_triggers.sql` — funciones y triggers | ✅ Completado | decrement_stock, increment_stock, add_loyalty_points, get_daily_sales, get_low_stock_products, tabla `alerts`, triggers `on_sale_insert`/`on_sale_update`. |
 | 5 | `017`/`019`/`020` checkout atómico | ✅ Completado | `process_complete_checkout` + flag para evitar doble decremento. |
-| 6 | `024_fix_realtime_publication.sql` | ✅ Archivo listo | Debe aplicarse en la base de datos de Supabase para evitar error `42P10`. |
+| 6 | `024_fix_realtime_publication.sql` | ✅ Completado | Publicación Realtime con todas las columnas; aplicado en staging. |
 | 7 | `tests/004_functions_triggers.test.sql` | ✅ Completado | 13/13 tests PASS en base de staging. |
-| 8 | `025_orders_deliveries_supabase.sql` — migrar incoming_orders/deliveries | ✅ Completado | Tablas `orders`, `deliveries`, `public_deliveries` + RLS + trigger de sync. |
+| 8 | `025_orders_deliveries_supabase.sql` — migrar incoming_orders/deliveries | ✅ Completado | Tablas `orders`, `deliveries`, `public_deliveries` + RLS + trigger de sync. Test: 5/5 PASS. |
 | 9 | Adaptar `software.html` al cliente de Supabase | ⚠️ Parcial | Ver sección "Adaptación de software.html" más abajo. |
 | 10 | Migrar `crm-client-app.html` a Supabase | ❌ Pendiente | Panel CRM. |
-| 10 | Script de migración Firebase → Supabase | ❌ Pendiente | `scripts/migrate-firebase-to-supabase.js`. |
-| 11 | Testing offline/online completo | ❌ Pendiente | Validar cola de sync y fallback offline. |
+| 11 | Script de migración Firebase → Supabase | ❌ Pendiente | `scripts/migrate-firebase-to-supabase.js`. |
+| 12 | Testing offline/online completo | ❌ Pendiente | Validar cola de sync y fallback offline. |
 
 ## Adaptación de `software.html`
 
@@ -364,7 +369,8 @@ Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
 ### Qué aún depende de Firestore / capa de compatibilidad
 
 - `modules/data-store.js` contiene la lógica original de Firestore (`collection`, `doc`, `getDocs`, `onSnapshot`, `saveToSubcollections`).
-- `modules/ui-controller.js` usa Firestore en funcionalidades secundarias: pedidos entrantes (`incoming_orders`), entregas (`deliveries`), pedidos públicos (`publicOrders`), chat web, resultados de entrenamiento y configuración de tienda pública.
+- `modules/ui-controller.js` aún usa Firestore en funcionalidades secundarias: pedidos públicos (`publicOrders`), chat web, resultados de entrenamiento y configuración de tienda pública.
+  - ✅ Pedidos entrantes (`incoming_orders`) y entregas (`deliveries`) ya fueron migrados a Supabase (`025_orders_deliveries_supabase.sql`).
 - `modules/app-controller.js` también referencia Firestore para licencias y tenants en modo legacy.
 - `modules/firebase-compat.js` es un stub que evita que el código legacy falle al cargar.
 - `modules/firestore-compat.js` traduce llamadas Firestore a Supabase, pero no cubre todas las funcionalidades.
@@ -375,11 +381,16 @@ El POS **puede funcionar** para el flujo principal de ventas y catálogo gracias
 
 ## Próximos pasos recomendados
 
-1. [ ] Decidir si se mantiene la arquitectura híbrida (adapter + compat) o se reescribe `software.html` nativamente para Supabase.
-2. [ ] Si se mantiene híbrido: migrar las funcionalidades de Firestore restantes (pedidos, entregas, chat, training) a Supabase vía `firestore-compat.js` o nuevas RPC.
-3. [ ] Migrar `crm-client-app.html` a Supabase.
-4. [ ] Crear script de migración de datos de Firebase.
-5. [ ] Testing offline/online completo.
+Se decidió mantener la **arquitectura híbrida** (adapter + compat) y migrar las funcionalidades restantes de Firestore a Supabase de forma gradual.
+
+1. [x] Mantener arquitectura híbrida (adapter + compat).
+2. [x] Migrar pedidos entrantes / entregas a Supabase (`025_orders_deliveries_supabase.sql`).
+3. [ ] Migrar chat web a tabla `messages` con Realtime.
+4. [ ] Migrar pedidos públicos (`publicOrders`) a Supabase.
+5. [ ] Migrar resultados de entrenamiento y configuración de tienda pública.
+6. [ ] Migrar `crm-client-app.html` a Supabase.
+7. [ ] Crear script de migración de datos de Firebase (`scripts/migrate-firebase-to-supabase.js`).
+8. [ ] Testing offline/online completo.
 
 ## Soporte
 
