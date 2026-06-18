@@ -35,7 +35,10 @@ CREATE PUBLICATION supabase_realtime FOR TABLE
     reload_requests,
     discount_campaigns,
     crm_activities,
-    alerts
+    alerts,
+    orders,
+    deliveries,
+    public_deliveries
 WITH (publish = 'insert,update,delete');
 
 COMMENT ON PUBLICATION supabase_realtime IS

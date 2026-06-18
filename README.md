@@ -42,7 +42,8 @@ RIVER-WALL SUPABASE/
 │   ├── 021_fix_granular_rls.sql       -- Fixes RLS granular
 │   ├── 022_fix_performance_indexes.sql -- Índices de rendimiento
 │   ├── 023_fix_missing_columns.sql    -- Columnas faltantes
-│   └── 024_fix_realtime_publication.sql -- Fix publicación Realtime (todas las columnas)
+│   ├── 024_fix_realtime_publication.sql -- Fix publicación Realtime (todas las columnas)
+│   └── 025_orders_deliveries_supabase.sql -- Tablas orders, deliveries y public_deliveries
 ├── tests/
 │   ├── 004_functions_triggers.test.sql   -- Test suite SQL para funciones y triggers
 │   ├── checkout-atomicity.test.js
@@ -340,8 +341,9 @@ Pendiente: se creará `scripts/migrate-firebase-to-supabase.js` que:
 | 5 | `017`/`019`/`020` checkout atómico | ✅ Completado | `process_complete_checkout` + flag para evitar doble decremento. |
 | 6 | `024_fix_realtime_publication.sql` | ✅ Archivo listo | Debe aplicarse en la base de datos de Supabase para evitar error `42P10`. |
 | 7 | `tests/004_functions_triggers.test.sql` | ✅ Completado | 13/13 tests PASS en base de staging. |
-| 8 | Adaptar `software.html` al cliente de Supabase | ⚠️ Parcial | Ver sección "Adaptación de software.html" más abajo. |
-| 9 | Migrar `crm-client-app.html` a Supabase | ❌ Pendiente | Panel CRM. |
+| 8 | `025_orders_deliveries_supabase.sql` — migrar incoming_orders/deliveries | ✅ Completado | Tablas `orders`, `deliveries`, `public_deliveries` + RLS + trigger de sync. |
+| 9 | Adaptar `software.html` al cliente de Supabase | ⚠️ Parcial | Ver sección "Adaptación de software.html" más abajo. |
+| 10 | Migrar `crm-client-app.html` a Supabase | ❌ Pendiente | Panel CRM. |
 | 10 | Script de migración Firebase → Supabase | ❌ Pendiente | `scripts/migrate-firebase-to-supabase.js`. |
 | 11 | Testing offline/online completo | ❌ Pendiente | Validar cola de sync y fallback offline. |
 

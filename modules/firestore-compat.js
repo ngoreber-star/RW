@@ -78,6 +78,14 @@
                 if (collection === 'publicOrderCodes') {
                     return { mode: 'doc', tenantId, table: 'public_order_codes', docId };
                 }
+                if (collection === 'incoming_orders') {
+                    if (docId) return { mode: 'doc', tenantId, table: 'orders', docId };
+                    return { mode: 'table', tenantId, table: 'orders' };
+                }
+                if (collection === 'deliveries') {
+                    if (docId) return { mode: 'doc', tenantId, table: 'deliveries', docId };
+                    return { mode: 'table', tenantId, table: 'deliveries' };
+                }
             }
         }
 
@@ -111,7 +119,9 @@
             publicStoreSettings: 'tenant_settings',
             catalog: 'products',
             deliveries: 'deliveries',
-            publicDeliveries: 'public_deliveries'
+            publicDeliveries: 'public_deliveries',
+            incoming_orders: 'orders',
+            orders: 'orders'
         };
         return map[str] || str;
     }
@@ -399,6 +409,9 @@
         serviceTypes: 'service_types',
         storeName: 'store_name',
         orderCode: 'order_code',
+        externalOrderId: 'external_order_id',
+        linkedSaleId: 'linked_sale_id',
+        invoicedAt: 'invoiced_at',
         cardNumber: 'card_number',
         taxId: 'tax_id',
         creditLimit: 'credit_limit',
