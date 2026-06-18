@@ -151,7 +151,15 @@ CREATE TRIGGER trg_sync_public_delivery
     EXECUTE FUNCTION sync_public_delivery();
 
 -- ============================================
--- 5. RPC: get_public_delivery_by_tracking (for portal)
+-- 5. ADD TABLES TO REALTIME PUBLICATION
+-- ============================================
+
+ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE deliveries;
+ALTER PUBLICATION supabase_realtime ADD TABLE public_deliveries;
+
+-- ============================================
+-- 6. RPC: get_public_delivery_by_tracking (for portal)
 -- ============================================
 
 CREATE OR REPLACE FUNCTION get_public_delivery_by_tracking(p_tracking_code TEXT)
