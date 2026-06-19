@@ -14,6 +14,8 @@
                     catalogUnsub: null
                 };
                 this._isSavingCloud = false;
+                this._sbDataStore = null;
+                this._sbPkg = null;
                 this.offlineSync = {
                     processing: false,
                     maxRetries: 5
@@ -265,88 +267,44 @@
             // y permitiendo cargar datos antiguos cuando se necesiten
             
             async loadHistoricalData(collectionName, options = {}) {
-                const { 
-                    startDate = null,      // Timestamp de inicio
-                    endDate = null,        // Timestamp de fin
-                    limit: maxResults = 100,
-                    lastDoc = null         // Para paginación
-                } = options;
-
-                if (!this.cloud.tenantId) {
-                    console.warn('No tenantId configured for historical data load');
-                    return { data: [], hasMore: false };
-                }
-
-                const scopeId = this.getCloudDataScopeId();
-                const colRef = collection(db, 'rw_tenants', this.cloud.tenantId, 'users', scopeId, collectionName);
-                
-                // Construir query con filtros
-                let q = query(colRef, orderBy('createdAt', 'desc'), limit(maxResults));
-                
-                if (startDate) {
-                    q = query(q, where('createdAt', '>=', startDate));
-                }
-                if (endDate) {
-                    q = query(q, where('createdAt', '<=', endDate));
-                }
-                if (lastDoc) {
-                    q = query(q, startAfter(lastDoc));
-                }
-
-                try {
-                    const snap = await getDocs(q);
-                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    
-                    return {
-                        data,
-                        hasMore: snap.docs.length === maxResults,
-                        lastDoc: snap.docs[snap.docs.length - 1] || null
-                    };
-                } catch (error) {
-                    console.error(`Error loading historical ${collectionName}:`, error);
-                    return { data: [], hasMore: false, error: error.message };
-                }
+                // Deprecated: historical load now handled by SupabaseDataStore
+                return { data: [], hasMore: false };
             }
 
             // Cargar más ventas históricas (para reportes o paginación)
             async loadMoreSales(options = {}) {
-                const result = await this.loadHistoricalData('sales', {
-                    limit: 200,
-                    ...options
-                });
-                
-                // Agregar al store local
-                if (result.data.length > 0) {
-                    const existingIds = new Set(this.data.sales.map(s => s.id));
-                    const newSales = result.data.filter(s => !existingIds.has(s.id));
-                    this.data.sales = [...this.data.sales, ...newSales].sort((a, b) => 
-                        (b.createdAt || 0) - (a.createdAt || 0)
-                    );
-                    this.save('sales');
-                    this.notify('sales');
+                if (!this._sbDataStore || !this.cloud.tenantId) {
+                    return { data: this.data.sales || [], hasMore: false };
                 }
-                
-                return result;
+                const toISODate = (ts) => {
+                    if (!ts) return null;
+                    const d = new Date(ts);
+                    return d.toISOString().split('T')[0];
+                };
+                const from = toISODate(options.startDate);
+                const to = toISODate(options.endDate);
+                try {
+                    const rows = await this._sbDataStore.getSales(this.cloud.tenantId, from, to);
+                    if (rows.length > 0) {
+                        const existingIds = new Set(this.data.sales.map(s => s.id));
+                        const newSales = rows.filter(s => !existingIds.has(s.id));
+                        this.data.sales = [...this.data.sales, ...newSales].sort((a, b) =>
+                            (b.createdAt || b.created_at || 0) - (a.createdAt || a.created_at || 0)
+                        );
+                        this.save('sales');
+                        this.notify('sales');
+                    }
+                    return { data: rows, hasMore: false };
+                } catch (err) {
+                    console.warn('[DataStore] loadMoreSales failed:', err.message);
+                    return { data: this.data.sales || [], hasMore: false, error: err.message };
+                }
             }
 
             // Cargar más entregas históricas
             async loadMoreDeliveries(options = {}) {
-                const result = await this.loadHistoricalData('deliveries', {
-                    limit: 100,
-                    ...options
-                });
-                
-                if (result.data.length > 0) {
-                    const existingIds = new Set(this.data.deliveries.map(d => d.id));
-                    const newDeliveries = result.data.filter(d => !existingIds.has(d.id));
-                    this.data.deliveries = [...this.data.deliveries, ...newDeliveries].sort((a, b) => 
-                        (b.scheduledAt || b.createdAt || 0) - (a.scheduledAt || a.createdAt || 0)
-                    );
-                    this.save('deliveries');
-                    this.notify('deliveries');
-                }
-                
-                return result;
+                // Deprecated: deliveries now synced via SupabaseDataStore
+                return { data: this.data.deliveries || [], hasMore: false };
             }
 
             queueOfflineOperation(operation) {
@@ -375,58 +333,36 @@
             }
 
             async commitSaleStockOperation(operation) {
-                const opRef = doc(db, 'rw_tenants', operation.tenantId, 'stock_operations', operation.id);
-
-                await runTransaction(db, async (transaction) => {
-                    const opSnap = await transaction.get(opRef);
-                    if (opSnap.exists()) return;
-
-                    const productRefs = operation.items.map((item) => ({
-                        item,
-                        ref: doc(db, 'rw_tenants', operation.tenantId, 'catalog', item.id)
-                    }));
-
-                    for (const entry of productRefs) {
-                        const productSnap = await transaction.get(entry.ref);
-                        if (!productSnap.exists()) {
-                            const err = new Error(`Producto no encontrado: ${entry.item.name}`);
-                            err.code = 'stock-conflict';
-                            throw err;
-                        }
-
-                        const remoteStock = Math.max(0, Number(productSnap.data()?.stock || 0));
-                        if (remoteStock < entry.item.qty) {
-                            const err = new Error(`Stock insuficiente para ${entry.item.name}`);
-                            err.code = 'stock-conflict';
-                            throw err;
-                        }
+                if (!operation?.items?.length) return true;
+                const tenantId = operation.tenantId || this.cloud.tenantId;
+                if (!tenantId || !this._sbPkg?.supabase) {
+                    return false;
+                }
+                const sb = this._sbPkg.supabase;
+                for (const item of operation.items) {
+                    const qty = Math.max(0, Number(item.qty || item.quantity || 0));
+                    if (qty === 0) continue;
+                    const { data: product, error: fetchErr } = await sb
+                        .from('products')
+                        .select('stock')
+                        .eq('id', item.id)
+                        .eq('tenant_id', tenantId)
+                        .maybeSingle();
+                    if (fetchErr) throw fetchErr;
+                    const remoteStock = Math.max(0, Number(product?.stock || 0));
+                    if (remoteStock < qty) {
+                        const err = new Error(`Stock insuficiente para ${item.name}`);
+                        err.code = 'stock-conflict';
+                        throw err;
                     }
-
-                    for (const entry of productRefs) {
-                        const productSnap = await transaction.get(entry.ref);
-                        const remoteStock = Math.max(0, Number(productSnap.data()?.stock || 0));
-                        transaction.set(entry.ref, {
-                            stock: remoteStock - entry.item.qty,
-                            updatedAt: serverTimestamp(),
-                            updatedBy: operation.userId
-                        }, { merge: true });
-                    }
-
-                    await this.applyExternalOrderInvoiceUpdate(transaction, operation);
-
-                    transaction.set(opRef, {
-                        id: operation.id,
-                        type: operation.type,
-                        saleId: operation.saleId,
-                        ticket: operation.ticket,
-                        tenantId: operation.tenantId,
-                        createdAt: operation.createdAt,
-                        appliedAt: serverTimestamp(),
-                        itemCount: operation.items.length,
-                        items: operation.items,
-                        status: 'applied'
-                    }, { merge: true });
-                });
+                    const { error } = await sb.rpc('decrement_stock', {
+                        p_product_id: item.id,
+                        p_quantity: qty,
+                        p_tenant_id: tenantId,
+                    });
+                    if (error) throw error;
+                }
+                return true;
             }
 
             async processOfflineOperations() {
@@ -439,59 +375,62 @@
                     return;
                 }
 
-                let queue = this.loadOfflineQueue();
-                if (!queue.length) {
-                    this.updateSyncIndicator();
-                    return;
-                }
-
                 this.offlineSync.processing = true;
 
                 try {
-                    for (const operation of queue) {
-                        if (!['pending', 'retrying'].includes(operation.status)) continue;
+                    // Process SupabaseDataStore sync queue
+                    if (this._sbDataStore) {
+                        await this._sbDataStore.processSyncQueue();
+                    }
 
-                        try {
-                            if (operation.type === 'sale-stock-sync') {
-                                await this.commitSaleStockOperation(operation);
-                                this.updateLocalRecordSilently('sales', operation.saleId, {
-                                    syncStatus: 'synced',
-                                    syncedAt: Date.now(),
-                                    syncError: null
-                                });
-                                operation.status = 'completed';
-                            }
-                        } catch (error) {
-                            operation.retries = Number(operation.retries || 0) + 1;
-                            operation.lastError = error?.message || String(error);
+                    // Process legacy sale-stock-sync queue
+                    let queue = this.loadOfflineQueue();
+                    if (queue.length) {
+                        for (const operation of queue) {
+                            if (!['pending', 'retrying'].includes(operation.status)) continue;
+                            try {
+                                if (operation.type === 'sale-stock-sync') {
+                                    await this.commitSaleStockOperation(operation);
+                                    this.updateLocalRecordSilently('sales', operation.saleId, {
+                                        syncStatus: 'synced',
+                                        syncedAt: Date.now(),
+                                        syncError: null
+                                    });
+                                    operation.status = 'completed';
+                                }
+                            } catch (error) {
+                                operation.retries = Number(operation.retries || 0) + 1;
+                                operation.lastError = error?.message || String(error);
 
-                            if (error?.code === 'stock-conflict') {
-                                operation.status = 'conflict';
-                                this.updateLocalRecordSilently('sales', operation.saleId, {
-                                    syncStatus: 'conflict',
-                                    syncError: operation.lastError,
-                                    conflictAt: Date.now()
-                                });
-                                ui?.showToast?.(`Conflicto de stock: ${operation.lastError}`, 'error', 5000);
-                            } else if (operation.retries >= this.offlineSync.maxRetries) {
-                                operation.status = 'failed';
-                                this.updateLocalRecordSilently('sales', operation.saleId, {
-                                    syncStatus: 'failed',
-                                    syncError: operation.lastError
-                                });
-                            } else {
-                                operation.status = 'retrying';
-                                this.updateLocalRecordSilently('sales', operation.saleId, {
-                                    syncStatus: 'pending',
-                                    syncError: operation.lastError
-                                });
+                                if (error?.code === 'stock-conflict') {
+                                    operation.status = 'conflict';
+                                    this.updateLocalRecordSilently('sales', operation.saleId, {
+                                        syncStatus: 'conflict',
+                                        syncError: operation.lastError,
+                                        conflictAt: Date.now()
+                                    });
+                                    ui?.showToast?.(`Conflicto de stock: ${operation.lastError}`, 'error', 5000);
+                                } else if (operation.retries >= this.offlineSync.maxRetries) {
+                                    operation.status = 'failed';
+                                    this.updateLocalRecordSilently('sales', operation.saleId, {
+                                        syncStatus: 'failed',
+                                        syncError: operation.lastError
+                                    });
+                                } else {
+                                    operation.status = 'retrying';
+                                    this.updateLocalRecordSilently('sales', operation.saleId, {
+                                        syncStatus: 'pending',
+                                        syncError: operation.lastError
+                                    });
+                                }
                             }
                         }
+                        queue = queue.filter((entry) => entry.status !== 'completed' && entry.status !== 'failed');
+                        this.saveOfflineQueue(queue);
                     }
                 } finally {
-                    queue = queue.filter((entry) => entry.status !== 'completed' && entry.status !== 'failed');
-                    this.saveOfflineQueue(queue);
                     this.offlineSync.processing = false;
+                    this.updateSyncIndicator();
                 }
             }
 
@@ -629,281 +568,50 @@
             }
 
             async connectCloud(user, tenantContext = null) {
-                if (!user?.uid) return;
-                this.cloud.userId = user.uid;
-                this.cloud.tenantId = tenantContext?.id || 'default';
+                const userId = user?.uid || user?.id;
+                if (!userId) return;
+                this.cloud.userId = userId;
+                this.cloud.tenantId = tenantContext?.id || tenantContext?.tenantId || 'default';
                 this.cloud.sharedStoreId = this.normalizeSharedStoreId(tenantContext?.sharedStoreId);
                 this.cloud.isHydrating = true;
 
-                // Prevenir contaminación cruzada entre tenants: limpiar datos antiguos no segmentados y reiniciar estructura
+                // Prevenir contaminación cruzada entre tenants
                 this.clearUnsegmentedLocalStorage();
                 this.data = this.createEmptyData();
 
                 this.loadFromLocalStorage();
-                
-                // Asegurar que existan impuestos y datos scopeados por local
                 this.ensureTaxesExist();
                 this.ensureLocalScopedData();
-                
-                const localSnapshot = {
-                    products: Array.isArray(this.data.products)
-                        ? this.data.products.map((product) => ({ ...product }))
-                        : []
-                };
 
                 try {
-                    // Try loading from subcollections first (new format)
-                    const subcollectionData = await this.loadFromSubcollections();
-                    
-                    if (subcollectionData && (
-                        subcollectionData.products?.length > 0 ||
-                        subcollectionData.sales?.length > 0 ||
-                        subcollectionData.clients?.length > 0 ||
-                        subcollectionData.suppliers?.length > 0 ||
-                        subcollectionData.categories?.length > 0 ||
-                        subcollectionData.warehouses?.length > 0 ||
-                        subcollectionData.taxes?.length > 0 ||
-                        subcollectionData.users?.length > 0 ||
-                        subcollectionData.deliveries?.length > 0 ||
-                        subcollectionData.deliveryEvents?.length > 0 ||
-                        subcollectionData.purchases?.length > 0 ||
-                        subcollectionData.promotions?.length > 0 ||
-                        subcollectionData.audit?.length > 0 ||
-                        subcollectionData.transfers?.length > 0 ||
-                        subcollectionData.quotes?.length > 0 ||
-                        subcollectionData.trainingResults?.length > 0 ||
-                        subcollectionData.warehouseStock?.length > 0 ||
-                        subcollectionData.inventoryMovements?.length > 0 ||
-                        subcollectionData.replenishmentAlerts?.length > 0 ||
-                        subcollectionData.expiryPromotions?.length > 0 ||
-                        subcollectionData.demandForecasts?.length > 0 ||
-                        subcollectionData.accountingAccounts?.length > 0 ||
-                        subcollectionData.accountingEntries?.length > 0 ||
-                        Object.keys(subcollectionData.settings || {}).length > 0 ||
-                        Object.keys(subcollectionData.accountingConfigs || {}).length > 0
-                    )) {
-                        // New format: data loaded from subcollections
-                        console.log('Data loaded from subcollections');
-                        this.cloud.isHydrating = true;
-                        this.cloud.isOffline = false;
-                        
-                        // Merge with defaults
-                        const merged = this.mergeWithDefaultShape(subcollectionData, localSnapshot);
-                        this.data = { ...this.data, ...merged };
-                        // Restaurar estado local del dispositivo (cashRegister, logo)
-                        this.restoreLocalDeviceState();
-                        
-                        // Mergear estado de cajas desde cloud para visibilidad multi-dispositivo
-                        const cloudCrStates = subcollectionData.cashRegisterStates || {};
-                        if (Object.keys(cloudCrStates).length > 0) {
-                            if (!this.data.cashRegisters) this.data.cashRegisters = {};
-                            for (const [tid, cloudState] of Object.entries(cloudCrStates)) {
-                                const localCr = this.data.cashRegisters[tid];
-                                if (cloudState.isOpen) {
-                                    if (!localCr) {
-                                        // Otro dispositivo abrió la caja; crear registro local mínimo
-                                        this.data.cashRegisters[tid] = {
-                                            isOpen: true,
-                                            openedBy: cloudState.openedBy,
-                                            openedByName: cloudState.openedByName,
-                                            openedAt: cloudState.openedAt,
-                                            movements: [],
-                                            currentAmount: 0,
-                                            openingAmount: 0
-                                        };
-                                    } else if (localCr.isOpen) {
-                                        // Local ya está abierta, sincronizar metadata
-                                        localCr.openedBy = cloudState.openedBy;
-                                        localCr.openedByName = cloudState.openedByName;
-                                        localCr.openedAt = cloudState.openedAt;
-                                    }
-                                    // Si localCr.isOpen === false, NO reabrimos automáticamente
-                                    // (el usuario cerró esta caja explícitamente en este dispositivo)
-                                } else if (localCr?.isOpen) {
-                                    // Cloud dice cerrada y local está abierta → cerrar local
-                                    localCr.isOpen = false;
-                                    localCr.closedAt = cloudState.closedAt || Date.now();
-                                    localCr.closedBy = cloudState.closedBy;
-                                    localCr.closedByName = cloudState.closedByName;
-                                }
-                            }
-                        }
-                        
-                        // Merge cloud tombstones with local tombstones so deleted records stay deleted across devices
-                        try {
-                            const scopeId = this.getCloudDataScopeId();
-                            const tombstonesCol = collection(db, 'rw_tenants', this.cloud.tenantId, 'users', scopeId, '_tombstones');
-                            const tombstonesSnap = await getDocs(tombstonesCol);
-                            const cloudTombstones = {};
-                            tombstonesSnap.docs.forEach(d => {
-                                const data = d.data();
-                                if (data.collection && data.docId) {
-                                    if (!cloudTombstones[data.collection]) cloudTombstones[data.collection] = {};
-                                    cloudTombstones[data.collection][data.docId] = data.deletedAt ? new Date(data.deletedAt.seconds * 1000).getTime() : Date.now();
-                                }
-                            });
-                            const localTombstones = this.getTombstones();
-                            const mergedTombstones = { ...localTombstones };
-                            for (const [col, ids] of Object.entries(cloudTombstones)) {
-                                if (!mergedTombstones[col]) mergedTombstones[col] = {};
-                                for (const [id, ts] of Object.entries(ids)) {
-                                    mergedTombstones[col][id] = Math.max(mergedTombstones[col][id] || 0, ts);
-                                }
-                            }
-                            localStorage.setItem(this.getLocalStorageKey('_tombstones'), JSON.stringify(mergedTombstones));
-                            if (tombstonesSnap.docs.length > 0) {
-                                console.log(`[DataStore] Merged ${tombstonesSnap.docs.length} cloud tombstones`);
-                            }
-                        } catch (e) {
-                            console.warn('[DataStore] Could not load cloud tombstones:', e);
-                        }
+                    if (!window.SupabaseClient) throw new Error('SupabaseClient no disponible');
+                    this._sbPkg = await window.SupabaseClient.init();
+                    this._sbDataStore = this._sbPkg.dataStore;
+                    this._sbDataStore.setTenant(this.cloud.tenantId, this.cloud.userId);
+                    this._sbDataStore.setLocale(AppState.currentLocalId);
 
-                        this.applyTombstones();
-                        
-                        // Asegurar que existan impuestos y locales después de cargar desde la nube
-                        this.ensureTaxesExist();
-                        const newDefaultLocalId = this.ensureDefaultLocal();
-                        // Update AppState.currentLocalId if it points to a non-existent local
-                        if (!AppState.currentLocalId || !this.getLocalById(AppState.currentLocalId)) {
-                            AppState.currentLocalId = newDefaultLocalId;
-                            localStorage.setItem(`rw_${this.cloud.tenantId || 'default'}_currentLocalId`, newDefaultLocalId);
-                        }
-                        
-                        await this.hydrateMissingProductImagesFromCatalog();
-                        this.migratePosTerminals();
-                        this.ensureWarehouseStock();
-                        this.persistAllLocal();
-                        this.notifyAll();
-                        this.cloud.isHydrating = false;
+                    if (navigator.onLine) {
+                        await this._sbDataStore.syncAllTables(this.cloud.tenantId);
+                        this._mergeRemoteData(this._sbDataStore);
                         this.cloud.hasLoadedCloudData = true;
-                        this.startCatalogListener();
-
-                        if (subcollectionData._cloudMeta?.needsSharedMigration) {
-                            console.log('[DataStore] Limpiando snapshot legacy del documento settings para evitar migraciones recurrentes...');
-                            try {
-                                const scopeId = this.getCloudDataScopeId();
-                                await updateDoc(doc(db, 'rw_tenants', this.cloud.tenantId, 'users', scopeId), { storeData: deleteField() });
-                                console.log('[DataStore] Snapshot legacy eliminado del settings document.');
-                            } catch (e) {
-                                console.warn('[DataStore] No se pudo eliminar snapshot legacy:', e);
-                            }
-                        }
-
-                        this.updateSyncIndicator();
-                        
-                        // Run auto-archive in background
-                        this.archiveOldData().catch(e => console.warn('Archive error:', e));
-                        
-                        await this.processOfflineOperations();
+                        this.cloud.isOffline = false;
                     } else {
-                        // Try old format (single document)
-                        const sharedRef = this.getCloudRef();
-                        let snap = sharedRef ? await getDoc(sharedRef) : null;
-
-                        if ((!snap?.exists() || !snap.data()?.storeData) && this.cloud.userId && this.cloud.userId !== this.getCloudDataScopeId()) {
-                            const legacyUserRef = this.getCloudRef(this.cloud.userId);
-                            const legacySnap = legacyUserRef ? await getDoc(legacyUserRef) : null;
-                            if (legacySnap?.exists() && legacySnap.data()?.storeData) {
-                                console.log('Legacy user-scoped storeData detected; migrating to shared tenant scope...');
-                                snap = legacySnap;
-                            }
-                        }
-                        
-                        if (snap?.exists() && snap.data()?.storeData) {
-                            console.log('Migrating from old format to subcollections...');
-                            this.cloud.isHydrating = true;
-                            this.cloud.isOffline = false;
-                            this.data = this.mergeWithDefaultShape(snap.data().storeData, localSnapshot);
-                            // Restaurar estado local del dispositivo (cashRegister, logo)
-                            this.restoreLocalDeviceState();
-                            this.ensureTaxesExist();
-                            const newDefaultLocalId = this.ensureDefaultLocal();
-                            if (!AppState.currentLocalId || !this.getLocalById(AppState.currentLocalId)) {
-                                AppState.currentLocalId = newDefaultLocalId;
-                                localStorage.setItem(`rw_${this.cloud.tenantId || 'default'}_currentLocalId`, newDefaultLocalId);
-                            }
-                            this.migratePosTerminals();
-                            this.persistAllLocal();
-                            this.notifyAll();
-                            this.cloud.isHydrating = false;
-                            this.cloud.hasLoadedCloudData = true;
-                            this.updateSyncIndicator();
-                            
-                            // Migrate to new format
-                            await this.saveCloudNow();
-                            console.log('Migration complete');
-                            
-                            await this.processOfflineOperations();
-                        } else {
-                            const profile = tenantContext?.profile || {};
-                            const hasLocalSettings = !!localStorage.getItem(this.getLocalStorageKey('settings'));
-                            const hasLocalData = this.data.products?.length > 0 || 
-                                                 this.data.categories?.length > 0 || 
-                                                 this.data.clients?.length > 0 ||
-                                                 this.data.warehouses?.length > 0 ||
-                                                 this.data.sales?.length > 0 ||
-                                                 this.data.suppliers?.length > 0 ||
-                                                 this.data.locales?.length > 0 ||
-                                                 hasLocalSettings;
-                            if (hasLocalData) {
-                                console.log('[DataStore] Cloud empty but local data exists. Preserving local data and attempting sync.');
-                                this.cloud.isHydrating = false;
-                                this.cloud.hasLoadedCloudData = false;
-                                this.updateSyncIndicator();
-                                await this.processOfflineOperations();
-                                await this.saveCloudNow();
-                            } else {
-                                // New user - initialize
-                                this.cloud.isHydrating = true;
-                                this.cloud.isOffline = false;
-                                this.data = this.createEmptyData({
-                                    businessName: profile.name || profile.businessName || '',
-                                    taxId: '',
-                                    phone: profile.phone || '',
-                                    address: profile.address || '',
-                                    currency: 'XAF',
-                                    taxRate: 0,
-                                    billing: {
-                                        legalName: '',
-                                        nif: '',
-                                        address: '',
-                                        city: ''
-                                    }
-                                });
-                                this.initSampleData();
-                                this.persistAllLocal();
-                                this.notifyAll();
-                                this.cloud.isHydrating = false;
-                                await this.saveCloudNow();
-                                this.updateSyncIndicator();
-                                await this.processOfflineOperations();
-                            }
-                        }
+                        this.cloud.isOffline = true;
                     }
+
+                    this._startSupabaseRealtime(this._sbDataStore);
+
+                    this.ensureDefaultLocal();
+                    this.ensureLocalScopedData();
+                    this.cloud.isHydrating = false;
+                    this.notifyAll();
+                    this.updateSyncIndicator();
                 } catch (error) {
-                    console.error('Error conectando con Firestore:', error?.message || error);
-                    console.warn('Intentando cargar datos del almacenamiento local...');
-                    const loaded = this.loadFromLocalStorage();
-                    if (loaded) {
-                        console.log('Datos cargados desde localStorage');
-                        this.ensureTaxesExist();
-                        const newDefaultLocalId = this.ensureDefaultLocal();
-                        if (!AppState.currentLocalId || !this.getLocalById(AppState.currentLocalId)) {
-                            AppState.currentLocalId = newDefaultLocalId;
-                            localStorage.setItem(`rw_${this.cloud.tenantId || 'default'}_currentLocalId`, newDefaultLocalId);
-                        }
-                        this.cloud.isOffline = true;
-                        this.notifyAll();
-                    } else {
-                        console.warn('No hay datos en localStorage, inicializando estructura base vacia');
-                        this.cloud.isHydrating = true;
-                        this.cloud.isOffline = true;
-                        this.initSampleData();
-                        this.ensureTaxesExist();
-                        this.persistAllLocal();
-                        this.notifyAll();
-                        this.cloud.isHydrating = false;
-                    }
+                    console.error('[DataStore] Error conectando con Supabase:', error?.message || error);
+                    console.warn('[DataStore] Usando modo offline con localStorage');
+                    this.cloud.isOffline = true;
+                    this.cloud.isHydrating = false;
+                    this.notifyAll();
                     this.updateSyncIndicator();
                 }
             }
@@ -915,10 +623,112 @@
                     this.cloud.saveTimer = null;
                 }
                 if (this.cloud.catalogUnsub) {
-                    this.cloud.catalogUnsub();
+                    try { this.cloud.catalogUnsub(); } catch (e) {}
                     this.cloud.catalogUnsub = null;
                 }
+                if (this._sbDataStore) {
+                    try { this._sbDataStore.unsubscribeAll(); } catch (e) {}
+                    this._sbDataStore = null;
+                }
+                this._sbPkg = null;
                 this.updateSyncIndicator();
+            }
+
+            // --- Supabase integration helpers ---
+
+            _mergeRemoteData(sbDS) {
+                const tables = [
+                    'products','categories','clients','locales','sales','purchases',
+                    'suppliers','warehouses','warehouseStock','taxes','posTerminals',
+                    'loyaltyCards','wallet_transactions','crm_coupons','discount_campaigns',
+                    'pos_terminals','transfers','inventoryMovements'
+                ];
+                const changedTables = [];
+                tables.forEach(tbl => {
+                    const remote = sbDS.getAll(tbl);
+                    if (!remote || !remote.length) return;
+                    const local = this.data[tbl] || [];
+                    const merged = [...local];
+                    remote.forEach(rItem => {
+                        let idx = merged.findIndex(l => l.id === rItem.id);
+                        if (idx === -1 && tbl === 'warehouseStock') {
+                            idx = merged.findIndex(l =>
+                                l.productId === rItem.productId &&
+                                l.warehouseId === rItem.warehouseId &&
+                                (l.lotNumber || null) === (rItem.lotNumber || null) &&
+                                (l.expiryDate || null) === (rItem.expiryDate || null) &&
+                                (l.variantKey || null) === (rItem.variantKey || null)
+                            );
+                        }
+                        if (idx >= 0) {
+                            const rTime = new Date(rItem.updatedAt || rItem.createdAt || rItem.updated_at || rItem.created_at || 0).getTime();
+                            const lTime = new Date(merged[idx].updatedAt || merged[idx].createdAt || merged[idx].updated_at || merged[idx].created_at || 0).getTime();
+                            if (rTime >= lTime) {
+                                const before = JSON.stringify(merged[idx]);
+                                merged[idx] = { ...merged[idx], ...rItem };
+                                if (JSON.stringify(merged[idx]) !== before) changedTables.push(tbl);
+                            }
+                        } else {
+                            merged.push(rItem);
+                            changedTables.push(tbl);
+                        }
+                    });
+                    if (merged.length !== local.length) changedTables.push(tbl);
+                    this.data[tbl] = merged;
+                    this.save(tbl);
+                });
+                if (changedTables.length) {
+                    this.notifyAll();
+                    [...new Set(changedTables)].forEach(tbl => this.notify(tbl));
+                }
+            }
+
+            _startSupabaseRealtime(sbDS) {
+                const tenantId = this.cloud.tenantId;
+                if (!tenantId) return;
+                const tables = [
+                    'products', 'categories', 'clients', 'sales', 'purchases',
+                    'suppliers', 'warehouses', 'warehouseStock', 'inventoryMovements',
+                    'transfers', 'posTerminals', 'taxes', 'locales'
+                ];
+                sbDS.subscribeRealtimeAll(tables, tenantId, (table, payload) => this._applyRealtimeChange(table, payload));
+            }
+
+            _applyRealtimeChange(table, payload) {
+                const { eventType, new: newRec } = payload;
+                if (!newRec || typeof newRec !== 'object') return;
+                const rec = {};
+                Object.entries(newRec).forEach(([k, v]) => {
+                    if (k === 'id' || k === 'tenant_id' || k === 'user_id' || k.startsWith('_')) {
+                        rec[k] = v;
+                    } else {
+                        rec[k.replace(/_([a-z])/g, (_, l) => l.toUpperCase())] = v;
+                    }
+                });
+                if (table === 'products' && (rec.category || rec.categoryId)) {
+                    const categories = this.data?.categories || [];
+                    if (rec.category && categories.length) {
+                        const found = categories.find(c => c.id === rec.category);
+                        if (found) rec.categoryName = found.name;
+                    }
+                    if (rec.categoryId && !rec.category && categories.length) {
+                        const found = categories.find(c => c.id === rec.categoryId);
+                        if (found) rec.category = found.name;
+                    }
+                }
+                if (table === 'clients' && rec.credit == null && rec.creditLimit != null) {
+                    rec.credit = rec.creditLimit;
+                }
+                const data = this.data[table] || [];
+                if (eventType === 'INSERT') {
+                    if (!data.find(d => d.id === rec.id)) { data.push(rec); this.save(table); this.notify(table); }
+                } else if (eventType === 'UPDATE') {
+                    const idx = data.findIndex(d => d.id === rec.id);
+                    if (idx >= 0) { data[idx] = { ...data[idx], ...rec }; this.save(table); this.notify(table); }
+                    else { data.push(rec); this.save(table); this.notify(table); }
+                } else if (eventType === 'DELETE') {
+                    this.data[table] = data.filter(d => d.id !== rec.id); this.save(table); this.notify(table);
+                }
             }
 
             startCatalogListener() {
@@ -964,47 +774,8 @@
             }
 
             async hydrateMissingProductImagesFromCatalog() {
-                if (!this.cloud.userId || !this.cloud.tenantId || this.cloud.tenantId === 'default') return;
-                if (!Array.isArray(this.data.products) || this.data.products.length === 0) return;
-                if (!this.data.products.some((product) => !product?.image)) return;
-
-                try {
-                    const catalogSnap = await getDocs(collection(db, 'rw_tenants', this.cloud.tenantId, 'catalog'));
-                    if (catalogSnap.empty) return;
-
-                    const productIndex = new Map();
-                    this.data.products.forEach((product, index) => {
-                        [product?.id, product?.sku, product?.name]
-                            .map((value) => String(value || '').trim().toLowerCase())
-                            .filter(Boolean)
-                            .forEach((key) => productIndex.set(key, index));
-                    });
-
-                    let changed = false;
-                    catalogSnap.docs.forEach((catalogDoc) => {
-                        const remoteProduct = catalogDoc.data() || {};
-                        const remoteImage = typeof remoteProduct.image === 'string' ? remoteProduct.image.trim() : '';
-                        if (!remoteImage) return;
-
-                        const keys = [catalogDoc.id, remoteProduct.id, remoteProduct.sku, remoteProduct.name]
-                            .map((value) => String(value || '').trim().toLowerCase())
-                            .filter(Boolean);
-                        const matchIndex = keys.map((key) => productIndex.get(key)).find((value) => value !== undefined);
-                        if (matchIndex === undefined) return;
-
-                        const localProduct = this.data.products[matchIndex];
-                        if (!localProduct?.image) {
-                            this.data.products[matchIndex] = { ...localProduct, image: remoteImage };
-                            changed = true;
-                        }
-                    });
-
-                    if (changed) {
-                        this.save('products');
-                    }
-                } catch (error) {
-                    console.warn('No se pudieron restaurar imagenes desde catalogo:', error);
-                }
+                // Deprecated: product images now come from Supabase via SupabaseDataStore
+                return;
             }
 
             mergeWithDefaultShape(remoteData, localSnapshot = {}) {
@@ -1086,225 +857,23 @@
             }
 
             async syncTenantCatalog() {
-                if (!this.cloud.userId || !this.cloud.tenantId || this.cloud.tenantId === 'default') return;
-
-                const catalogRef = collection(db, 'rw_tenants', this.cloud.tenantId, 'catalog');
-                const localProducts = Array.isArray(this.data.products) ? this.data.products : [];
-                const localIds = new Set(localProducts.map((product) => product.id));
-                const pendingStockProductIds = this.getPendingStockProductIds();
-                const existingSnap = await getDocs(catalogRef);
-                const batch = writeBatch(db);
-
-                existingSnap.docs.forEach((snap) => {
-                    if (!localIds.has(snap.id)) {
-                        batch.delete(doc(db, 'rw_tenants', this.cloud.tenantId, 'catalog', snap.id));
-                    }
-                });
-
-                localProducts.forEach((product) => {
-                    const payload = {
-                        id: product.id,
-                        name: product.name || '',
-                        sku: product.sku || '',
-                        category: product.category || '',
-                        price: Number(product.price || 0),
-                        cost: Number(product.cost || 0),
-                        minStock: Number(product.minStock || 0),
-                        image: product.image || null,
-                        active: product.active !== false,
-                        hasVariants: !!(product.hasVariants || (Array.isArray(product.variants) && product.variants.length) || (Array.isArray(product.sizes) && product.sizes.length) || (Array.isArray(product.colors) && product.colors.length)),
-                        sizes: Array.isArray(product.sizes) ? product.sizes : [],
-                        colors: Array.isArray(product.colors) ? product.colors : [],
-                        variants: Array.isArray(product.variants) ? product.variants.map(v => ({ key: v.key, stock: Number(v.stock || 0), sku: v.sku || '' })) : [],
-                        updatedAt: serverTimestamp(),
-                        updatedBy: this.cloud.userId
-                    };
-
-                    if (!pendingStockProductIds.has(product.id)) {
-                        payload.stock = Number(product.stock || 0);
-                    }
-
-                    batch.set(doc(db, 'rw_tenants', this.cloud.tenantId, 'catalog', product.id), payload, { merge: true });
-                });
-
-                await batch.commit();
+                // Deprecated: products now synced via SupabaseDataStore
+                return;
             }
 
             async pullTenantDeliveries(options = {}) {
-                if (!this.cloud.userId || !this.cloud.tenantId || this.cloud.tenantId === 'default') return;
-
-                const scopeId = this.getCloudDataScopeId();
-                const deliveriesRef = collection(db, 'rw_tenants', this.cloud.tenantId, 'users', scopeId, 'deliveries');
-                const snap = await getDocs(deliveriesRef);
-                if (snap.empty) return;
-
-                const allSharedDeliveries = snap.docs.map((docSnap) => {
-                    const data = docSnap.data() || {};
-                    const updatedAtMs = this.toTimestampMs(data.updatedAt || data.scheduledAt || data.createdAt);
-                    const createdAtMs = this.toTimestampMs(data.createdAt || data.scheduledAt || data.updatedAt) || Date.now();
-                    const history = Array.isArray(data.history) ? data.history : [];
-                    return {
-                        id: docSnap.id,
-                        ...data,
-                        updatedAt: updatedAtMs,
-                        createdAt: createdAtMs,
-                        history,
-                        scheduledAt: data.scheduledAt?.toDate ? data.scheduledAt.toDate().toISOString() : (data.scheduledAt || null)
-                    };
-                });
-
-                const sharedDeliveries = allSharedDeliveries.filter((delivery) => {
-                    if (delivery.tenantId === this.cloud.tenantId) return true;
-                    console.warn(`[pullTenantDeliveries] Ignorando entrega de tenant ${delivery.tenantId || 'sin tenantId'} en tenant ${this.cloud.tenantId}: ${delivery.id}`);
-                    return false;
-                });
-
-                const localMap = new Map((Array.isArray(this.data.deliveries) ? this.data.deliveries : []).map((delivery) => [delivery.id, delivery]));
-                let deliveriesChanged = false;
-
-                sharedDeliveries.forEach((delivery) => {
-                    const existing = localMap.get(delivery.id);
-                    const existingUpdatedAt = this.toTimestampMs(existing?.updatedAt || existing?.scheduledAt || existing?.createdAt);
-                    if (!existing || existingUpdatedAt <= Number(delivery.updatedAt || 0)) {
-                        localMap.set(delivery.id, { ...existing, ...delivery });
-                        deliveriesChanged = true;
-                    }
-                });
-
-                // Eliminar del localStorage las entregas que ya no existen en Firestore
-                // (solo si fueron previamente sincronizadas, para no perder entregas offline nuevas)
-                const remoteDeliveryIds = new Set(sharedDeliveries.map(d => d.id));
-                for (const [localId, localDelivery] of localMap) {
-                    if (!remoteDeliveryIds.has(localId) && localDelivery._syncedAt) {
-                        localMap.delete(localId);
-                        deliveriesChanged = true;
-                        console.warn(`[pullTenantDeliveries] Eliminando entrega ${localId} del localStorage porque ya no existe en Firestore`);
-                    }
-                }
-
-                if (deliveriesChanged) {
-                    this.data.deliveries = Array.from(localMap.values()).sort((a, b) => this.toTimestampMs(b.updatedAt || b.scheduledAt || b.createdAt) - this.toTimestampMs(a.updatedAt || a.scheduledAt || a.createdAt));
-                    this.save('deliveries');
-                    this.notify('deliveries');
-                }
-
-                const remoteEvents = sharedDeliveries.flatMap((delivery) => (Array.isArray(delivery.history) ? delivery.history : []).map((entry, index) => ({
-                    id: `${delivery.id}_${index}_${String(entry.at || '').replace(/[^a-zA-Z0-9_-]/g, '_')}`,
-                    deliveryId: delivery.id,
-                    trackingCode: delivery.trackingCode,
-                    status: entry.status || delivery.status || 'pendiente',
-                    note: entry.note || '',
-                    changedAt: entry.at || delivery.updatedAt || delivery.createdAt || new Date().toISOString(),
-                    changedBy: entry.changedBy || delivery.updatedBy || 'sistema'
-                })));
-
-                if (remoteEvents.length) {
-                    const eventMap = new Map((Array.isArray(this.data.deliveryEvents) ? this.data.deliveryEvents : []).map((event) => [event.id || `${event.deliveryId}_${event.changedAt}`, event]));
-                    let eventsChanged = false;
-                    remoteEvents.forEach((event) => {
-                        if (!eventMap.has(event.id)) {
-                            eventMap.set(event.id, event);
-                            eventsChanged = true;
-                        }
-                    });
-                    if (eventsChanged) {
-                        this.data.deliveryEvents = Array.from(eventMap.values()).sort((a, b) => this.toTimestampMs(b.changedAt || b.createdAt) - this.toTimestampMs(a.changedAt || a.createdAt));
-                        this.save('deliveryEvents');
-                        this.notify('deliveryEvents');
-                    }
-                }
-
-                if (!options.silent && deliveriesChanged) {
-                    ui?.showToast?.('Entregas sincronizadas desde la nube', 'success');
-                }
+                // Deprecated: deliveries now synced via SupabaseDataStore
+                return;
             }
 
             async pullTenantClients() {
-                if (!this.cloud.userId || !this.cloud.tenantId || this.cloud.tenantId === 'default') return;
-
-                const clientsRef = collection(db, 'rw_tenants', this.cloud.tenantId, 'clients');
-                const snap = await getDocs(clientsRef);
-                if (snap.empty) return;
-
-                const sharedClients = snap.docs.map((docSnap) => {
-                    const data = docSnap.data() || {};
-                    return {
-                        id: docSnap.id,
-                        firstName: data.firstName || data.nombre || '',
-                        lastName: data.lastName || '',
-                        phone: data.phone || data.telefono || '',
-                        email: data.email || '',
-                        address: data.address || '',
-                        credit: Number(data.credit || 0),
-                        purchases: Number(data.purchases || 0),
-                        syncedFromExternal: data.source === 'order-pill',
-                        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().getTime() : (new Date(data.updatedAt || 0).getTime() || Date.now())
-                    };
-                });
-
-                const tombstones = this.getTombstones('clients');
-                const localMap = new Map(this.data.clients.map((client) => [client.id, client]));
-                let changed = false;
-
-                sharedClients.forEach((client) => {
-                    if (tombstones[client.id]) return; // Don't resurrect tombstoned clients
-                    const existing = localMap.get(client.id);
-                    if (!existing || Number(existing.updatedAt || 0) <= Number(client.updatedAt || 0)) {
-                        localMap.set(client.id, { ...existing, ...client });
-                        changed = true;
-                    }
-                });
-
-                // Remove any local clients that are tombstoned
-                for (const [id] of localMap) {
-                    if (tombstones[id]) {
-                        localMap.delete(id);
-                        changed = true;
-                    }
-                }
-
-                if (changed) {
-                    this.data.clients = Array.from(localMap.values());
-                    this.save('clients');
-                    this.notify('clients');
-                }
+                // Deprecated: clients now synced via SupabaseDataStore
+                return;
             }
 
             async syncTenantClients() {
-                if (!this.cloud.userId || !this.cloud.tenantId || this.cloud.tenantId === 'default') return;
-
-                const clientsRef = collection(db, 'rw_tenants', this.cloud.tenantId, 'clients');
-                const localClients = Array.isArray(this.data.clients) ? this.data.clients : [];
-                const localIds = new Set(localClients.map((client) => client.id));
-                const existingSnap = await getDocs(clientsRef);
-                const batch = writeBatch(db);
-
-                existingSnap.docs.forEach((snap) => {
-                    const data = snap.data() || {};
-                    if (data.source !== 'order-pill' && !localIds.has(snap.id)) {
-                        batch.delete(doc(db, 'rw_tenants', this.cloud.tenantId, 'clients', snap.id));
-                    }
-                });
-
-                localClients.forEach((client) => {
-                    batch.set(doc(db, 'rw_tenants', this.cloud.tenantId, 'clients', client.id), {
-                        id: client.id,
-                        firstName: client.firstName || '',
-                        lastName: client.lastName || '',
-                        nombre: `${client.firstName || ''} ${client.lastName || ''}`.trim(),
-                        phone: client.phone || '',
-                        email: client.email || '',
-                        address: client.address || '',
-                        credit: Number(client.credit || 0),
-                        purchases: Number(client.purchases || 0),
-                        source: 'river-wall',
-                        tenantId: this.cloud.tenantId,
-                        updatedAt: serverTimestamp(),
-                        updatedBy: this.cloud.userId
-                    }, { merge: true });
-                });
-
-                await batch.commit();
+                // Deprecated: clients now synced via SupabaseDataStore
+                return;
             }
 
             compactCollectionForCloud(collection, maxItems, fields = null) {
@@ -1504,7 +1073,7 @@
                 return Number.isFinite(parsed) ? parsed : 0;
             }
 
-            // NEW: Save data using subcollections (no 1MB limit)
+            // Save pending changes to Supabase
             async saveCloudNow() {
                 if (this._isSavingCloud) {
                     console.warn('[DataStore] saveCloudNow skipped: another save is in progress');
@@ -1517,20 +1086,13 @@
                         console.log('[DataStore] Practical exam active - skipping cloud save');
                         return;
                     }
-                    
-                    if (navigator.onLine && this.getPendingOfflineOperationCount() > 0) {
-                        await this.processOfflineOperations();
+
+                    if (this._sbDataStore) {
+                        await this._sbDataStore.processSyncQueue();
                     }
-                    
-                    console.log('Saving to cloud using subcollections (no size limit)...');
-                    await this.saveToSubcollections();
-                    // OPTIMIZACIÓN: syncTenantCatalog y syncTenantClients desactivados para reducir lecturas/escrituras
-                    // await this.syncTenantCatalog();
-                    // await this.syncTenantClients();
                     this.updateSyncIndicator();
-                    console.log('Cloud save successful (subcollections)');
                 } catch (error) {
-                    console.error('Error guardando en Firestore:', error);
+                    console.error('[DataStore] Error sincronizando con Supabase:', error);
                 } finally {
                     this._isSavingCloud = false;
                 }
@@ -2107,22 +1669,28 @@
                 });
                 // 2. Reiniciar datos en memoria
                 this.data = this.createEmptyData();
-                // 3. Recargar desde Firestore
-                const subcollectionData = await this.loadFromSubcollections();
-                if (subcollectionData) {
-                    const merged = this.mergeWithDefaultShape(subcollectionData, {});
-                    this.data = { ...this.data, ...merged };
-                    this.applyTombstones();
+                // 3. Recargar desde Supabase
+                if (this._sbDataStore) {
+                    await this._sbDataStore.syncAllTables(this.cloud.tenantId);
+                    this._mergeRemoteData(this._sbDataStore);
                     this.ensureTaxesExist();
                     this.persistAllLocal();
                     this.notifyAll();
-                    console.log('[DataStore] Limpieza forzada completada. Datos recargados desde Firestore.');
+                    console.log('[DataStore] Limpieza forzada completada. Datos recargados desde Supabase.');
                 } else {
-                    console.warn('[DataStore] No se pudieron recargar datos desde Firestore durante limpieza forzada.');
+                    console.warn('[DataStore] No hay conexión a Supabase. Usando datos locales vacíos.');
                 }
             }
 
             async adminPurgeFirestoreCollection(collectionName, options = {}) {
+                // Legacy Firestore purge no longer supported. Clear local data only.
+                console.warn('[DataStore] adminPurgeFirestoreCollection is deprecated. Clearing local data only.');
+                if (this.data[collectionName] !== undefined) {
+                    this.data[collectionName] = [];
+                    this.save(collectionName);
+                    this.notify(collectionName);
+                }
+                return { success: true, deletedScope: 0, deletedTopLevel: 0 };
                 const { alsoPurgeTopLevel = false, topLevelCollectionName = null } = options;
                 // deliveries ya no es top-level; se ignora alsoPurgeTopLevel para deliveries
                 if (!this.cloud.tenantId) {
@@ -2522,46 +2090,21 @@
                 }
             }
 
-            // NEW: Archive old data automatically
+            // Archive old data automatically (local trim only; Supabase handles long-term storage)
             async archiveOldData() {
-                const ARCHIVE_AGE_DAYS = 90; // Archive data older than 90 days
+                const ARCHIVE_AGE_DAYS = 90;
                 const archiveCutoff = Date.now() - (ARCHIVE_AGE_DAYS * 24 * 60 * 60 * 1000);
-                
                 let archivedCount = 0;
-
-                // Archive old sales
                 if (Array.isArray(this.data.sales)) {
                     const oldSales = this.data.sales.filter(s => (s.date || s.createdAt) < archiveCutoff);
-                    if (oldSales.length > 0 && this.cloud.tenantId) {
-                        const archiveCol = collection(db, 'rw_tenants', this.cloud.tenantId, 'users', this.getCloudDataScopeId(), 'archived_sales');
-                        const batch = writeBatch(db);
-                        
-                        for (const sale of oldSales.slice(0, 100)) { // Archive max 100 at a time
-                            if (sale?.id) {
-                                batch.set(doc(archiveCol, sale.id), {
-                                    ...this.removeUndefinedValues(sale),
-                                    _archivedAt: Date.now(),
-                                    _originalId: sale.id
-                                });
-                            }
-                        }
-                        
-                        await batch.commit();
-                        archivedCount += oldSales.length;
-                        console.log(`Archived ${oldSales.length} old sales`);
-                    }
-                }
-
-                // Keep only recent data in memory
-                if (Array.isArray(this.data.sales)) {
+                    archivedCount = oldSales.length;
                     const recentCount = this.data.sales.filter(s => (s.date || s.createdAt) >= archiveCutoff).length;
                     if (this.data.sales.length > recentCount + 100) {
                         this.data.sales = this.data.sales.slice(-Math.max(recentCount, 500));
                         this.save('sales');
-                        console.log(`Trimmed sales to last ${this.data.sales.length} records`);
+                        console.log(`[DataStore] Trimmed sales to last ${this.data.sales.length} records`);
                     }
                 }
-
                 return archivedCount;
             }
 
@@ -2821,8 +2364,55 @@
                 return item;
             }
             
+            _generateUUID() {
+                return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            }
+
+            _isUUID(str) {
+                return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+            }
+
+            _getSupabaseCollections() {
+                return ['products','categories','clients','suppliers','warehouses','sales','purchases','locales','taxes','posTerminals'];
+            }
+
+            async _syncToSupabase(collection, operation, payload) {
+                if (!this._sbDataStore || !this.cloud.tenantId || this.cloud.tenantId === 'default') return;
+                if (AppState?.practicalExam) return;
+                if (!this._getSupabaseCollections().includes(collection)) return;
+                const tenantId = this.cloud.tenantId;
+                try {
+                    this._sbDataStore.setTenant(tenantId, this.cloud.userId);
+                    this._sbDataStore.setLocale(AppState.currentLocalId);
+                    if (collection === 'products') {
+                        if (operation === 'delete') this._sbDataStore.deleteProduct(tenantId, payload).catch(() => {});
+                        else this._sbDataStore.saveProduct(tenantId, payload).catch(() => {});
+                    } else if (collection === 'clients') {
+                        if (operation === 'delete') this._sbDataStore.delete('clients', payload, true).catch(() => {});
+                        else this._sbDataStore.saveClient(tenantId, payload).catch(() => {});
+                    } else if (collection === 'warehouses') {
+                        if (operation === 'delete') this._sbDataStore.delete('warehouses', payload, true).catch(() => {});
+                        else this._sbDataStore.saveWarehouse(tenantId, payload).catch(() => {});
+                    } else if (collection === 'sales') {
+                        if (operation === 'delete') this._sbDataStore.delete('sales', payload, true).catch(() => {});
+                        else this._sbDataStore.saveSale(tenantId, payload).catch(() => {});
+                    } else {
+                        if (operation === 'insert') this._sbDataStore.insert(collection, payload, true).catch(() => {});
+                        else if (operation === 'update') this._sbDataStore.update(collection, payload.id, payload, true).catch(() => {});
+                        else if (operation === 'delete') this._sbDataStore.delete(collection, payload, true).catch(() => {});
+                    }
+                } catch (err) {
+                    console.warn('[DataStore] Sync to Supabase failed:', err.message);
+                }
+            }
+
             add(collection, item) {
-                item.id = item.id || collection + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                const supabaseCollections = this._getSupabaseCollections();
+                if (supabaseCollections.includes(collection)) {
+                    item.id = item.id || this._generateUUID();
+                } else {
+                    item.id = item.id || collection + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                }
                 item.createdAt = item.createdAt || Date.now();
                 // Auto-tag local-scoped entities with current localId
                 const localScopedCollections = ['sales','deliveries','deliveryEvents','purchases','warehouses','warehouseStock','inventoryMovements','posTerminals','posTerminalClosures','cashMovements','containerReceipts','quotes','products','categories','clients','suppliers','taxes','promotions'];
@@ -2836,6 +2426,7 @@
                 this.save(collection);
                 this.notify(collection);
                 this.audit('CREATE', collection, item.id, item);
+                this._syncToSupabase(collection, 'insert', item);
                 return item;
             }
             
@@ -2862,6 +2453,7 @@
                     this.save(collection);
                     this.notify(collection);
                     this.audit('UPDATE', collection, id, { before: oldData, after: this.data[collection][index] });
+                    this._syncToSupabase(collection, 'update', this.data[collection][index]);
                     return this.data[collection][index];
                 }
                 return null;
@@ -2906,30 +2498,7 @@
                 }
                 localStorage.setItem(tombstoneKey, JSON.stringify(tombstones));
 
-                if (this.cloud.enabled && this.cloud.userId && !this.cloud.isHydrating) {
-                    // Sync tombstone to Firestore so other devices don't resurrect this record
-                    try {
-                        const scopeId = this.getCloudDataScopeId();
-                        const tombstoneRef = doc(db, 'rw_tenants', this.cloud.tenantId, 'users', scopeId, '_tombstones', `${collection}_${id}`);
-                        setDoc(tombstoneRef, {
-                            collection,
-                            docId: id,
-                            deletedAt: serverTimestamp(),
-                            deletedBy: this.cloud.userId,
-                            _syncedAt: Date.now()
-                        }).catch(err => console.warn('[DataStore] Tombstone sync failed:', err));
-                    } catch (e) {
-                        console.warn('[DataStore] Could not sync tombstone:', e);
-                    }
-
-                    if (this.cloud.saveTimer) {
-                        clearTimeout(this.cloud.saveTimer);
-                        this.cloud.saveTimer = null;
-                    }
-                    this.saveCloudNow().catch((error) => {
-                        console.warn(`No se pudo sincronizar la eliminación en ${collection}:`, error);
-                    });
-                }
+                this._syncToSupabase(collection, 'delete', id);
 
                 this.notify(collection);
                 this.audit('DELETE', collection, id, item);

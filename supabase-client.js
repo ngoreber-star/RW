@@ -424,6 +424,7 @@
             this.isOnline = navigator.onLine;
             this.currentTenantId = null;
             this.currentUserId = null;
+            this.currentLocaleId = null;
             this.syncInProgress = false;
 
             // Listen for online/offline
@@ -478,14 +479,18 @@
             localStorage.setItem(CONFIG.SYNC_QUEUE_KEY, JSON.stringify(queue));
         }
 
-        enqueue(table, operation, payload) {
+        enqueue(table, operation, payload, tenantId = null, localeId = null) {
+            const effectiveTenantId = tenantId || this.currentTenantId;
+            const effectiveLocaleId = localeId || this.currentLocaleId;
+            if (!effectiveTenantId) throw new Error('tenantId requerido para encolar operación');
             const queue = this._loadQueue();
             queue.push({
                 id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`,
                 table,
                 operation, // 'insert', 'update', 'delete'
                 payload,
-                tenantId: this.currentTenantId,
+                tenantId: effectiveTenantId,
+                localeId: effectiveLocaleId,
                 createdAt: Date.now(),
                 attempts: 0,
             });
@@ -539,6 +544,7 @@
 
         async _executeRemoteOp(op) {
             if (!this.supabase) throw new Error('No supabase client');
+            if (!op.tenantId) throw new Error('tenantId requerido en operación remota');
             const sbTable = getSupabaseTableName(op.table);
             const tbl = this.supabase.from(sbTable);
 
@@ -566,32 +572,41 @@
                 op.payload.address = op.payload.location;
                 delete op.payload.location;
             }
+            // sales: date → created_at, discount → discount_total
+            if (op.table === 'sales' && op.payload) {
+                if (op.payload.date && !op.payload.created_at && !op.payload.createdAt) {
+                    op.payload.created_at = op.payload.date;
+                }
+                if (op.payload.discount !== undefined && op.payload.discount_total === undefined && op.payload.discountTotal === undefined) {
+                    op.payload.discount_total = op.payload.discount;
+                }
+                delete op.payload.date;
+                delete op.payload.discount;
+            }
 
-            if (op.operation === 'insert') {
-                const payload = toSnake({ ...op.payload, tenant_id: op.tenantId });
-                const { error } = await tbl.insert(payload);
-                if (error) throw error;
-            } else if (op.operation === 'update') {
-                const { id, ...rest } = op.payload;
-                const { data: remote } = await tbl.select('updated_at, created_at').eq('id', id).eq('tenant_id', op.tenantId).maybeSingle();
-                if (remote) {
-                    const resolved = await this._resolveConflict(op.table, rest, remote);
-                    if (resolved === remote) {
-                        console.log('[DataStore] Conflicto resuelto: versión remota más reciente para', id);
-                        const fullRemote = await tbl.select('*').eq('id', id).eq('tenant_id', op.tenantId).maybeSingle();
-                        if (fullRemote?.data) {
-                            const cached = this._loadCache(op.table);
-                            const idx = cached.findIndex(i => i.id === id);
-                            if (idx >= 0) {
-                                cached[idx] = this._postProcessSync(op.table, toCamel(fullRemote.data));
-                                this._saveCache(op.table, cached);
+            if (op.operation === 'insert' || op.operation === 'update') {
+                const payload = toSnake({ ...op.payload, tenant_id: op.tenantId, ...(op.localeId ? { locale_id: op.localeId } : {}) });
+                const { id } = payload;
+                if (id) {
+                    const { data: remote } = await tbl.select('updated_at, created_at').eq('id', id).eq('tenant_id', op.tenantId).maybeSingle();
+                    if (remote) {
+                        const resolved = await this._resolveConflict(op.table, payload, remote);
+                        if (resolved === remote) {
+                            console.log('[DataStore] Conflicto resuelto: versión remota más reciente para', id);
+                            const fullRemote = await tbl.select('*').eq('id', id).eq('tenant_id', op.tenantId).maybeSingle();
+                            if (fullRemote?.data) {
+                                const cached = this._loadCache(op.table);
+                                const idx = cached.findIndex(i => i.id === id);
+                                if (idx >= 0) {
+                                    cached[idx] = this._postProcessSync(op.table, toCamel(fullRemote.data));
+                                    this._saveCache(op.table, cached);
+                                }
                             }
+                            return;
                         }
-                        return;
                     }
                 }
-                const payload = toSnake(rest);
-                const { error } = await tbl.update(payload).eq('id', id).eq('tenant_id', op.tenantId);
+                const { error } = await tbl.upsert(payload, { onConflict: 'id' });
                 if (error) throw error;
             } else if (op.operation === 'delete') {
                 const { error } = await tbl.delete().eq('id', op.payload.id).eq('tenant_id', op.tenantId);
@@ -627,6 +642,12 @@
                 if (obj.contactPerson == null && obj.contact_name != null) obj.contactPerson = obj.contact_name;
                 if (obj.contactPerson == null && obj.contactName != null) obj.contactPerson = obj.contactName;
             }
+            if (table === 'sales') {
+                if (!obj.date && (obj.createdAt || obj.created_at)) obj.date = obj.createdAt || obj.created_at;
+                if (!obj.ticket && (obj.saleNumber || obj.sale_number)) obj.ticket = obj.saleNumber || obj.sale_number;
+                if (obj.discountTotal == null && obj.discount_total != null) obj.discountTotal = obj.discount_total;
+                if (obj.taxTotal == null && obj.tax_total != null) obj.taxTotal = obj.tax_total;
+            }
             return obj;
         }
 
@@ -635,6 +656,10 @@
         setTenant(tenantId, userId) {
             this.currentTenantId = tenantId;
             this.currentUserId = userId;
+        }
+
+        setLocale(localeId) {
+            this.currentLocaleId = localeId;
         }
 
         getAll(table) {
@@ -651,10 +676,8 @@
             data.push(payload);
             this._saveCache(table, data);
 
-            if (syncToCloud && !CONFIG.LOCAL_ONLY_TABLES.includes(table)) {
-                if (this.isOnline && this.supabase) {
-                    this.enqueue(table, 'insert', payload);
-                }
+            if (syncToCloud && !CONFIG.LOCAL_ONLY_TABLES.includes(table) && this.currentTenantId) {
+                this.enqueue(table, 'insert', payload, null, this.currentLocaleId);
             }
             // Audit log (ISO 27001 A.12.4.1)
             if (global.RWSecurity?.logAudit) {
@@ -676,10 +699,8 @@
             data[idx] = { ...data[idx], ...changes, updated_at: new Date().toISOString() };
             this._saveCache(table, data);
 
-            if (syncToCloud && !CONFIG.LOCAL_ONLY_TABLES.includes(table)) {
-                if (this.isOnline && this.supabase) {
-                    this.enqueue(table, 'update', data[idx]);
-                }
+            if (syncToCloud && !CONFIG.LOCAL_ONLY_TABLES.includes(table) && this.currentTenantId) {
+                this.enqueue(table, 'update', data[idx], null, this.currentLocaleId);
             }
             // Audit log (ISO 27001 A.12.4.1)
             if (global.RWSecurity?.logAudit) {
@@ -698,10 +719,8 @@
             const data = this._loadCache(table).filter(item => item.id !== id);
             this._saveCache(table, data);
 
-            if (syncToCloud && !CONFIG.LOCAL_ONLY_TABLES.includes(table)) {
-                if (this.isOnline && this.supabase) {
-                    this.enqueue(table, 'delete', { id });
-                }
+            if (syncToCloud && !CONFIG.LOCAL_ONLY_TABLES.includes(table) && this.currentTenantId) {
+                this.enqueue(table, 'delete', { id }, null, this.currentLocaleId);
             }
             // Audit log (ISO 27001 A.12.4.1)
             if (global.RWSecurity?.logAudit) {
@@ -727,7 +746,8 @@
         // --- Bulk Sync from Supabase ---
 
         async syncTable(table, tenantId, options = {}) {
-            if (!this.supabase) return [];
+            this._ensureTenant(tenantId);
+            if (!this.supabase) return this._loadCache(table);
             const { filter = {}, orderBy = 'created_at', ascending = false } = options;
 
             const sbTable = getSupabaseTableName(table);
@@ -735,6 +755,10 @@
                 .from(sbTable)
                 .select('*')
                 .eq('tenant_id', tenantId);
+
+            if (this.currentLocaleId) {
+                query = query.eq('locale_id', this.currentLocaleId);
+            }
 
             // Apply extra filters
             Object.entries(filter).forEach(([col, val]) => {
@@ -894,6 +918,111 @@
         unsubscribeAll() {
             Object.values(this.subscriptions).forEach(ch => ch?.unsubscribe?.());
             this.subscriptions = {};
+        }
+
+        // ============================================================
+        // DOMAIN-SPECIFIC API (Firebase DataStore compatibility)
+        // ============================================================
+
+        _ensureTenant(tenantId) {
+            if (!tenantId) throw new Error('tenantId requerido');
+        }
+
+        _generateId() {
+            return crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        }
+
+        async getProducts(tenantId) {
+            this._ensureTenant(tenantId);
+            return this.syncTable('products', tenantId);
+        }
+
+        async saveProduct(tenantId, product) {
+            this._ensureTenant(tenantId);
+            this.setTenant(tenantId, this.currentUserId);
+            const payload = { ...product };
+            if (!payload.id) payload.id = this._generateId();
+            payload.updated_at = new Date().toISOString();
+            return this.upsert('products', payload, true);
+        }
+
+        async deleteProduct(tenantId, productId) {
+            this._ensureTenant(tenantId);
+            this.setTenant(tenantId, this.currentUserId);
+            return this.delete('products', productId, true);
+        }
+
+        async getSales(tenantId, dateFrom, dateTo) {
+            this._ensureTenant(tenantId);
+            if (!this.supabase) return this._loadCache('sales');
+            const sbTable = getSupabaseTableName('sales');
+            let query = this.supabase
+                .from(sbTable)
+                .select('*')
+                .eq('tenant_id', tenantId);
+            if (this.currentLocaleId) {
+                query = query.eq('locale_id', this.currentLocaleId);
+            }
+            if (dateFrom) {
+                const start = new Date(dateFrom);
+                start.setHours(0, 0, 0, 0);
+                query = query.gte('created_at', start.toISOString());
+            }
+            if (dateTo) {
+                const end = new Date(dateTo);
+                end.setHours(23, 59, 59, 999);
+                query = query.lte('created_at', end.toISOString());
+            }
+            query = query.order('created_at', { ascending: false });
+            const { data, error } = await query;
+            if (error) {
+                console.warn('[DataStore] Failed to getSales:', error.message);
+                return this._loadCache('sales');
+            }
+            const rows = (data || []).map(row => this._postProcessSync('sales', toCamel(row)));
+            this._saveCache('sales', rows);
+            return rows;
+        }
+
+        async saveSale(tenantId, sale) {
+            this._ensureTenant(tenantId);
+            this.setTenant(tenantId, this.currentUserId);
+            const payload = { ...sale };
+            if (!payload.id) payload.id = this._generateId();
+            payload.updated_at = new Date().toISOString();
+            return this.upsert('sales', payload, true);
+        }
+
+        async getClients(tenantId) {
+            this._ensureTenant(tenantId);
+            return this.syncTable('clients', tenantId);
+        }
+
+        async saveClient(tenantId, client) {
+            this._ensureTenant(tenantId);
+            this.setTenant(tenantId, this.currentUserId);
+            const payload = { ...client };
+            if (!payload.id) payload.id = this._generateId();
+            payload.updated_at = new Date().toISOString();
+            return this.upsert('clients', payload, true);
+        }
+
+        async getWarehouses(tenantId) {
+            this._ensureTenant(tenantId);
+            return this.syncTable('warehouses', tenantId);
+        }
+
+        async saveWarehouse(tenantId, warehouse) {
+            this._ensureTenant(tenantId);
+            this.setTenant(tenantId, this.currentUserId);
+            const payload = { ...warehouse };
+            if (!payload.id) payload.id = this._generateId();
+            payload.updated_at = new Date().toISOString();
+            return this.upsert('warehouses', payload, true);
+        }
+
+        async syncOfflineQueue() {
+            return this.processSyncQueue();
         }
 
         // --- Utilities ---
@@ -1180,7 +1309,9 @@
         };
     }
 
-    // Expose globally
+    // Expose classes and utilities globally
+    global.SupabaseDataStore = SupabaseDataStore;
+
     global.SupabaseClient = {
         init: initSupabaseClient,
         configure: configureSupabase,

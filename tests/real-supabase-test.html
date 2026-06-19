@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIVER-WALL - Test Real SupabaseDataStore</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        h1 { color: #38bdf8; margin-bottom: 8px; }
+        .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #334155;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #f8fafc;
+            font-size: 14px;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+        textarea { min-height: 80px; font-family: monospace; font-size: 12px; }
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            background: #0ea5e9;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0284c7; }
+        button.secondary { background: #475569; }
+        button.secondary:hover { background: #334155; }
+        button.danger { background: #ef4444; }
+        button.danger:hover { background: #dc2626; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .status {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        .status.ok { background: #064e3b; color: #6ee7b7; }
+        .status.error { background: #450a0a; color: #fca5a5; }
+        .status.info { background: #1e3a8a; color: #93c5fd; }
+        pre {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #38bdf8;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RIVER-WALL PRO - Test Real SupabaseDataStore</h1>
+    <p class="subtitle">Abre la consola (F12) para ver logs detallados. Este HTML se conecta a tu Supabase real.</p>
+
+    <div class="card">
+        <div class="section-title">1. Sesión</div>
+        <div class="grid">
+            <div>
+                <label>Email</label>
+                <input type="email" id="email" placeholder="usuario@negocio.com">
+            </div>
+            <div>
+                <label>Contraseña</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+        </div>
+        <div class="actions">
+            <button onclick="doLogin()">Iniciar sesión</button>
+            <button class="secondary" onclick="useCurrentSession()">Usar sesión actual</button>
+            <button class="secondary" onclick="SupabaseClient.diagnose()">Diagnóstico</button>
+        </div>
+        <div id="sessionStatus" class="status info">Esperando inicio de sesión...</div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">2. Tenant</div>
+        <div class="grid">
+            <div>
+                <label>tenant_id (UUID)</label>
+                <input type="text" id="tenantId" placeholder="00000000-0000-0000-0000-000000000000">
+                <p class="hint">Se rellena automáticamente tras login. También puedes pegarlo manualmente.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">3. Productos</div>
+        <div class="grid">
+            <div>
+                <label>Nombre del producto</label>
+                <input type="text" id="productName" value="Producto de prueba">
+            </div>
+            <div>
+                <label>Precio</label>
+                <input type="number" id="productPrice" value="1000">
+            </div>
+            <div>
+                <label>Stock</label>
+                <input type="number" id="productStock" value="50">
+            </div>
+        </div>
+        <div class="actions">
+            <button onclick="runGetProducts()">getProducts()</button>
+            <button onclick="runSaveProduct()">saveProduct()</button>
+            <button class="danger" onclick="runDeleteProduct()">deleteProduct()</button>
+        </div>
+        <div>
+            <label>ID del producto (para borrar)</label>
+            <input type="text" id="deleteProductId" placeholder="Pega aquí el UUID del producto a eliminar">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">4. Clientes</div>
+        <div class="grid">
+            <div>
+                <label>Nombre</label>
+                <input type="text" id="clientFirstName" value="Cliente">
+            </div>
+            <div>
+                <label>Apellido</label>
+                <input type="text" id="clientLastName" value="Prueba">
+            </div>
+            <div>
+                <label>Teléfono</label>
+                <input type="text" id="clientPhone" value="+240 222 000 000">
+            </div>
+        </div>
+        <div class="actions">
+            <button onclick="runGetClients()">getClients()</button>
+            <button onclick="runSaveClient()">saveClient()</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">5. Almacenes</div>
+        <div class="grid">
+            <div>
+                <label>Nombre</label>
+                <input type="text" id="warehouseName" value="Almacén Prueba">
+            </div>
+            <div>
+                <label>Tipo</label>
+                <select id="warehouseType">
+                    <option value="store">store</option>
+                    <option value="general">general</option>
+                    <option value="cold">cold</option>
+                    <option value="transit">transit</option>
+                </select>
+            </div>
+            <div>
+                <label>Dirección</label>
+                <input type="text" id="warehouseAddress" value="Calle Principal">
+            </div>
+        </div>
+        <div class="actions">
+            <button onclick="runGetWarehouses()">getWarehouses()</button>
+            <button onclick="runSaveWarehouse()">saveWarehouse()</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">6. Ventas</div>
+        <div class="grid">
+            <div>
+                <label>Desde (YYYY-MM-DD)</label>
+                <input type="date" id="saleDateFrom">
+            </div>
+            <div>
+                <label>Hasta (YYYY-MM-DD)</label>
+                <input type="date" id="saleDateTo">
+            </div>
+            <div>
+                <label>Total</label>
+                <input type="number" id="saleTotal" value="5000">
+            </div>
+            <div>
+                <label>Método de pago</label>
+                <select id="salePaymentMethod">
+                    <option value="cash">cash</option>
+                    <option value="card">card</option>
+                    <option value="wallet">wallet</option>
+                    <option value="mobile_money">mobile_money</option>
+                    <option value="credit">credit</option>
+                </select>
+            </div>
+        </div>
+        <div class="actions">
+            <button onclick="runGetSales()">getSales()</button>
+            <button onclick="runSaveSale()">saveSale()</button>
+            <button class="secondary" onclick="runSyncQueue()">syncOfflineQueue()</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">7. Resultado</div>
+        <pre id="output">// Los resultados aparecerán aquí...</pre>
+    </div>
+
+    <!-- Carga de dependencias en el orden correcto -->
+    <script src="/env.js"></script>
+    <script src="/vendor/supabase.js"></script>
+    <script src="/supabase-client.js"></script>
+
+    <script>
+        if (!window.SupabaseClient) {
+            document.body.innerHTML = `
+                <div style="padding:40px; color:#fca5a5;">
+                    <h2>Error de carga</h2>
+                    <p>No se pudo cargar <code>supabase-client.js</code>.</p>
+                    <p>Asegúrate de servir esta página desde la raíz del proyecto, no desde la carpeta <code>tests/</code>.</p>
+                    <p>Ejecuta desde la raíz del proyecto:</p>
+                    <pre style="background:#0f172a; padding:12px; border-radius:8px;">npx serve .</pre>
+                    <p>Y abre: <code>http://localhost:3000/tests/real-supabase-test.html</code></p>
+                </div>
+            `;
+            throw new Error('SupabaseClient no cargado. Servir desde raíz del proyecto.');
+        }
+
+        let ds = null;
+        let auth = null;
+        let sbClient = null;
+
+        const $ = id => document.getElementById(id);
+
+        function setStatus(id, type, message) {
+            const el = $(id);
+            el.className = `status ${type}`;
+            el.textContent = message;
+        }
+
+        function showOutput(obj) {
+            $('output').textContent = JSON.stringify(obj, null, 2);
+        }
+
+        function getTenantId() {
+            const val = $('tenantId').value.trim();
+            if (!val) throw new Error('Completa el tenant_id primero');
+            return val;
+        }
+
+        async function init() {
+            const pkg = await window.SupabaseClient.init();
+            ds = pkg.dataStore;
+            auth = pkg.auth;
+            sbClient = pkg.supabase;
+        }
+
+        async function doLogin() {
+            try {
+                setStatus('sessionStatus', 'info', 'Iniciando sesión...');
+                if (!ds) await init();
+                const { user, tenant, error } = await auth.signIn($('email').value, $('password').value);
+                if (error) throw error;
+                $('tenantId').value = tenant?.id || '';
+                setStatus('sessionStatus', 'ok', `Sesión iniciada: ${user?.email} | Tenant: ${tenant?.id}`);
+                showOutput({ user, tenant });
+            } catch (err) {
+                console.error(err);
+                setStatus('sessionStatus', 'error', err.message);
+            }
+        }
+
+        async function useCurrentSession() {
+            try {
+                setStatus('sessionStatus', 'info', 'Recuperando sesión actual...');
+                if (!ds) await init();
+                const session = await auth.getSession();
+                if (!session?.user) throw new Error('No hay sesión activa');
+                const tenant = await auth.resolveTenant(session.user.id);
+                $('tenantId').value = tenant?.id || '';
+                setStatus('sessionStatus', 'ok', `Sesión activa: ${session.user.email} | Tenant: ${tenant?.id}`);
+                showOutput({ session, tenant });
+            } catch (err) {
+                console.error(err);
+                setStatus('sessionStatus', 'error', err.message);
+            }
+        }
+
+        async function runGetProducts() {
+            try {
+                const rows = await ds.getProducts(getTenantId());
+                console.log('[getProducts]', rows);
+                showOutput({ ok: true, count: rows.length, rows });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runSaveProduct() {
+            try {
+                const product = {
+                    name: $('productName').value,
+                    price: Number($('productPrice').value),
+                    stock: Number($('productStock').value),
+                    is_active: true,
+                };
+                const saved = await ds.saveProduct(getTenantId(), product);
+                console.log('[saveProduct]', saved);
+                showOutput({ ok: true, saved });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runDeleteProduct() {
+            try {
+                const id = $('deleteProductId').value.trim();
+                if (!id) throw new Error('Pega el ID del producto a eliminar');
+                await ds.deleteProduct(getTenantId(), id);
+                console.log('[deleteProduct]', id);
+                showOutput({ ok: true, deletedId: id });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runGetClients() {
+            try {
+                const rows = await ds.getClients(getTenantId());
+                console.log('[getClients]', rows);
+                showOutput({ ok: true, count: rows.length, rows });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runSaveClient() {
+            try {
+                const client = {
+                    first_name: $('clientFirstName').value,
+                    last_name: $('clientLastName').value,
+                    phone: $('clientPhone').value,
+                    is_active: true,
+                };
+                const saved = await ds.saveClient(getTenantId(), client);
+                console.log('[saveClient]', saved);
+                showOutput({ ok: true, saved });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runGetWarehouses() {
+            try {
+                const rows = await ds.getWarehouses(getTenantId());
+                console.log('[getWarehouses]', rows);
+                showOutput({ ok: true, count: rows.length, rows });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runSaveWarehouse() {
+            try {
+                const warehouse = {
+                    name: $('warehouseName').value,
+                    type: $('warehouseType').value,
+                    address: $('warehouseAddress').value,
+                    is_active: true,
+                };
+                const saved = await ds.saveWarehouse(getTenantId(), warehouse);
+                console.log('[saveWarehouse]', saved);
+                showOutput({ ok: true, saved });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runGetSales() {
+            try {
+                const from = $('saleDateFrom').value;
+                const to = $('saleDateTo').value;
+                const rows = await ds.getSales(getTenantId(), from, to);
+                console.log('[getSales]', rows);
+                showOutput({ ok: true, count: rows.length, rows });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runSaveSale() {
+            try {
+                const sale = {
+                    total: Number($('saleTotal').value),
+                    payment_method: $('salePaymentMethod').value,
+                    status: 'completed',
+                    items: [{ name: 'Producto genérico', price: Number($('saleTotal').value), qty: 1 }],
+                    date: new Date().toISOString(),
+                };
+                const saved = await ds.saveSale(getTenantId(), sale);
+                console.log('[saveSale]', saved);
+                showOutput({ ok: true, saved });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        async function runSyncQueue() {
+            try {
+                await ds.syncOfflineQueue();
+                showOutput({ ok: true, message: 'Cola offline procesada (revisa consola)' });
+            } catch (err) {
+                console.error(err);
+                showOutput({ ok: false, error: err.message });
+            }
+        }
+
+        // Inicializar al cargar la página sin bloquear
+        init().catch(console.error);
+    </script>
+</body>
+</html>
